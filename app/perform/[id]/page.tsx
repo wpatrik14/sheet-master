@@ -37,10 +37,13 @@ export default function PerformPage() {
   const [currentSheetFile, setCurrentSheetFile] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchSetlistData()
+    if (setlistId) {
+      fetchSetlistData()
+    }
   }, [setlistId])
 
   const fetchSetlistData = async () => {
+    setIsLoading(true)
     try {
       const response = await fetch(`/api/setlists/${setlistId}`)
       if (!response.ok) {
@@ -48,11 +51,14 @@ export default function PerformPage() {
       }
 
       const data = await response.json()
-      setSetlist(data)
+      if (!data) {
+        throw new Error("Setlist not found")
+      }
 
-      if (data.sheets && data.sheets.length > 0) {
-        setSheets(data.sheets)
-        // Fetch the first sheet's file
+      setSetlist(data)
+      setSheets(data.sheets || [])
+
+      if (data.sheets?.length > 0) {
         fetchSheetFile(data.sheets[0].id)
       } else {
         setIsLoading(false)
@@ -61,7 +67,7 @@ export default function PerformPage() {
       console.error("Error fetching setlist:", error)
       toast({
         title: "Error",
-        description: "Failed to load setlist. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to load setlist",
         variant: "destructive",
       })
       router.push("/setlists")
@@ -90,22 +96,24 @@ export default function PerformPage() {
   }
 
   const goToNextSheet = () => {
-    if (currentSheetIndex < sheets.length - 1) {
-      setCurrentSheetIndex(currentSheetIndex + 1)
-      fetchSheetFile(sheets[currentSheetIndex + 1].id)
+    const nextIndex = currentSheetIndex + 1
+    if (nextIndex < sheets.length) {
+      setCurrentSheetIndex(nextIndex)
+      fetchSheetFile(sheets[nextIndex].id)
       toast({
-        description: `Now showing: ${sheets[currentSheetIndex + 1].title}`,
+        description: `Now showing: ${sheets[nextIndex].title}`,
         duration: 2000,
       })
     }
   }
 
   const goToPreviousSheet = () => {
-    if (currentSheetIndex > 0) {
-      setCurrentSheetIndex(currentSheetIndex - 1)
-      fetchSheetFile(sheets[currentSheetIndex - 1].id)
+    const prevIndex = currentSheetIndex - 1
+    if (prevIndex >= 0) {
+      setCurrentSheetIndex(prevIndex)
+      fetchSheetFile(sheets[prevIndex].id)
       toast({
-        description: `Now showing: ${sheets[currentSheetIndex - 1].title}`,
+        description: `Now showing: ${sheets[prevIndex].title}`,
         duration: 2000,
       })
     }

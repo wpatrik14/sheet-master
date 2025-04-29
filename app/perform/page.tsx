@@ -7,18 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ListMusic, Play } from "lucide-react"
 
 export default function PerformPage() {
-  const [setlists, setSetlists] = useState<Array<{ id: string; name: string; sheets: string[]; createdAt: string }>>([])
+  const [setlists, setSetlists] = useState<Array<{ id: string; name: string; sheetCount: number; createdAt: string }>>([])
   const router = useRouter()
 
   useEffect(() => {
-    // Load setlists from localStorage
-    const storedSetlists = localStorage.getItem("setlists")
-    if (storedSetlists) {
-      const allSetlists = JSON.parse(storedSetlists)
-      // Only show setlists with sheets
-      const setlistsWithSheets = allSetlists.filter((setlist: any) => setlist.sheets.length > 0)
-      setSetlists(setlistsWithSheets)
+    const fetchSetlists = async () => {
+      try {
+        const response = await fetch('/api/setlists')
+        if (!response.ok) {
+          throw new Error('Failed to fetch setlists')
+        }
+        const { setlists } = await response.json()
+        // Only show setlists with sheets
+        const setlistsWithSheets = setlists.filter((setlist: { sheetCount: number }) => setlist.sheetCount > 0)
+        setSetlists(setlistsWithSheets)
+      } catch (error) {
+        console.error('Error fetching setlists:', error)
+      }
     }
+    fetchSetlists()
   }, [])
 
   return (
@@ -45,7 +52,7 @@ export default function PerformPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {setlist.sheets.length} {setlist.sheets.length === 1 ? "sheet" : "sheets"}
+                  {setlist.sheetCount} {setlist.sheetCount === 1 ? "sheet" : "sheets"}
                 </p>
                 <Button className="w-full">
                   <Play className="h-4 w-4 mr-2" />

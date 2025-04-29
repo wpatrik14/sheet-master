@@ -10,21 +10,23 @@ if (!fs.existsSync(dataDir)) {
 
 const dbPath = path.join(dataDir, "sheetmusic.db")
 
-let db: Database | null = null
+let dbInstance: Database | null = null
 
-export function getDb() {
-  if (!db) {
+export function getDb(): Database {
+  if (!dbInstance) {
     // Dynamic import to avoid issues with Next.js SSR
     const BetterSqlite3 = require("better-sqlite3")
-    db = new BetterSqlite3(dbPath)
+    const db = new BetterSqlite3(dbPath)
 
     // Create tables if they don't exist
     db.exec(`
       CREATE TABLE IF NOT EXISTS sheets (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
-        file TEXT NOT NULL,
-        uploadDate TEXT NOT NULL
+        filePath TEXT NOT NULL,
+        fileSize INTEGER NOT NULL,
+        uploadDate TEXT DEFAULT (datetime('now')),
+        updatedAt TEXT DEFAULT (datetime('now'))
       );
       
       CREATE TABLE IF NOT EXISTS setlists (
@@ -42,7 +44,12 @@ export function getDb() {
         FOREIGN KEY (sheetId) REFERENCES sheets(id) ON DELETE CASCADE
       );
     `)
+    dbInstance = db
   }
 
-  return db
+  if (!dbInstance) {
+    throw new Error("Database failed to initialize")
+  }
+
+  return dbInstance
 }

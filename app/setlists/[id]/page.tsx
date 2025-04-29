@@ -72,8 +72,7 @@ export default function EditSetlistPage() {
         throw new Error("Failed to fetch sheets")
       }
 
-      const sheetsData = await sheetsResponse.json()
-      const allSheets = sheetsData.sheets || []
+      const allSheets = await sheetsResponse.json()
 
       // Filter out sheets already in the setlist
       const setlistSheetIds = new Set((setlistData.sheets || []).map((s: Sheet) => s.id))
@@ -137,8 +136,11 @@ export default function EditSetlistPage() {
     // Get the selected sheets from available sheets
     const sheetsToAdd = availableSheets.filter((sheet) => selectedSheets.includes(sheet.id))
 
-    // Add to current sheets
-    const updatedSheets = [...sheets, ...sheetsToAdd]
+    // Add to current sheets with proper positions
+    const updatedSheets = [...sheets, ...sheetsToAdd.map((sheet, i) => ({
+      ...sheet,
+      position: sheets.length + i
+    }))]
     setSheets(updatedSheets)
 
     // Remove from available sheets
@@ -147,6 +149,9 @@ export default function EditSetlistPage() {
 
     // Clear selection
     setSelectedSheets([])
+    
+    // Force re-render to update perform button state
+    setSetlist(prev => prev ? {...prev, sheets: updatedSheets} : null)
   }
 
   const removeSheetFromSetlist = (sheetId: string) => {

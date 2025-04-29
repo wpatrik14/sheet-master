@@ -68,34 +68,24 @@ export default function UploadPage() {
     setIsUploading(true)
 
     try {
-      // Read file as data URL
-      const reader = new FileReader()
+      // Create FormData and append fields
+      const formData = new FormData()
+      formData.append('title', title.trim())
+      formData.append('file', file)
 
-      reader.onload = async (event) => {
-        const fileData = event.target?.result
+      // Send to API
+      const response = await fetch("/api/sheets", {
+        method: "POST",
+        body: formData
+      })
 
-        // Send to API
-        const response = await fetch("/api/sheets", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: title.trim(),
-            file: fileData,
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error("Failed to upload sheet")
-        }
-
-        // Navigate to sheets page
-        router.push("/sheets")
-        router.refresh()
+      if (!response.ok) {
+        throw new Error("Failed to upload sheet")
       }
 
-      reader.readAsDataURL(file)
+      // Navigate to sheets page
+      router.push("/sheets")
+      router.refresh()
     } catch (err) {
       console.error("Error uploading file:", err)
       setError("Failed to upload file. Please try again.")
