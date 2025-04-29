@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { getDb } from "@/lib/db"
 import { v4 as uuidv4 } from "uuid"
-import fs from "fs"
-import path from "path"
+import { put } from '@vercel/blob'
 
 export async function GET() {
   try {
@@ -147,19 +146,10 @@ export async function POST(request: Request) {
       throw new Error("Database not initialized")
     }
     const id = uuidv4()
-    const uploadDir = path.join(process.cwd(), "public", "pdfs")
-    const fileName = `${id}.pdf`
-    const filePath = path.join(uploadDir, fileName)
-    const publicPath = `/pdfs/${fileName}`
-    const fileBuffer = Buffer.from(await file.arrayBuffer())
-
-    // Ensure upload directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
-
-    // Save file
-    fs.writeFileSync(filePath, fileBuffer)
+    const blob = await put(`${id}.pdf`, file, {
+      access: 'public',
+      contentType: 'application/pdf'
+    })
 
     // Store in database
     db.prepare(
@@ -167,7 +157,7 @@ export async function POST(request: Request) {
     ).run(
       id,
       title,
-      publicPath,  // Store public path instead of filesystem path
+      blob.url,
       file.size,
       new Date().toISOString()
     )
@@ -175,7 +165,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       id, 
       title,
-      filePath: publicPath
+      filePath: blob.url
     }, { status: 201 })
   } catch (error) {
     console.error("Error uploading sheet:", error)
