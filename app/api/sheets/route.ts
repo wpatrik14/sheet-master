@@ -1,54 +1,25 @@
 import { NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
 import { v4 as uuidv4 } from "uuid"
-import { put } from '@vercel/blob'
+import { put, list } from '@vercel/blob'
 
 export async function GET() {
   try {
-    const db = getDb()
-    if (!db) {
-      throw new Error("Database not initialized")
-    }
+    const { blobs } = await list()
+    
+    // Filter for PDF files and map to response format
+    const sheets = blobs
+      .filter(blob => blob.pathname.endsWith('.pdf'))
+      .map(blob => ({
+        id: blob.pathname.replace('.pdf', ''),
+        title: blob.pathname.replace('.pdf', ''),
+        filePath: blob.url,
+        fileSize: blob.size,
+        uploadDate: blob.uploadedAt.toISOString(),
+        setlistCount: 0,
+        currentSetlists: []
+      }))
 
-    interface SheetRow {
-      id: string
-      title: string
-      filePath: string
-      fileSize: number
-      uploadDate: string
-      setlistCount: number
-      currentSetlists: string
-    }
-
-    interface SheetWithParsedSetlists extends Omit<SheetRow, 'currentSetlists'> {
-      currentSetlists: string[]
-    }
-
-    const sheets = db.prepare(`
-      SELECT 
-        s.id, 
-        s.title, 
-        s.filePath, 
-        s.fileSize, 
-        s.uploadDate,
-        COUNT(ss.setlistId) as setlistCount,
-        CASE 
-          WHEN GROUP_CONCAT(ss.setlistId) IS NULL THEN '[]'
-          ELSE '[' || GROUP_CONCAT('"' || ss.setlistId || '"') || ']'
-        END as currentSetlists
-      FROM sheets s
-      LEFT JOIN setlist_sheets ss ON s.id = ss.sheetId
-      GROUP BY s.id
-      ORDER BY s.uploadDate DESC
-    `).all()
-
-    // Parse currentSetlists from JSON string to array
-    const sheetsWithParsedSetlists = (sheets as SheetRow[]).map(sheet => ({
-      ...sheet,
-      currentSetlists: JSON.parse(sheet.currentSetlists) as string[]
-    })) as SheetWithParsedSetlists[]
-
-    return NextResponse.json(sheetsWithParsedSetlists)
+    return NextResponse.json(sheets)
   } catch (error) {
     console.error("Error fetching sheets:", error)
     return NextResponse.json(
@@ -141,32 +112,31 @@ export async function POST(request: Request) {
       )
     }
 
-    const db = getDb()
-    if (!db) {
-      throw new Error("Database not initialized")
-    }
     const id = uuidv4()
-    const blob = await put(`${id}.pdf`, file, {
-      access: 'public',
-      contentType: 'application/pdf'
-    })
+    try {
+      const blob = await put(`${id}.pdf`, file, {
+        access: 'public',
+        contentType: 'application/pdf',
+        addRandomSuffix: false
+      })
 
-    // Store in database
-    db.prepare(
-      "INSERT INTO sheets (id, title, filePath, fileSize, uploadDate) VALUES (?, ?, ?, ?, ?)"
-    ).run(
-      id,
-      title,
-      blob.url,
-      file.size,
-      new Date().toISOString()
-    )
-
-    return NextResponse.json({ 
-      id, 
-      title,
-      filePath: blob.url
-    }, { status: 201 })
+      return NextResponse.json({ 
+        id, 
+        title,
+        filePath: blob.url,
+        fileSize: file.size,
+        uploadDate: new Date().toISOString()
+      }, { status: 201 })
+    } catch (blobError) {
+      console.error("Error uploading to blob storage:", blobError)
+      return NextResponse.json(
+        { 
+          error: "Failed to upload file",
+          details: "Could not store file in blob storage"
+        },
+        { status: 500 }
+      )
+    }
   } catch (error) {
     console.error("Error uploading sheet:", error)
     return NextResponse.json(
