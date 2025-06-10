@@ -1,13 +1,22 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Document, Page, pdfjs } from "react-pdf"
+import { Document, Page } from "react-pdf"
 import { Button } from "@/components/ui/button"
 import { ZoomIn, ZoomOut, RotateCw } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import * as pdfjs from 'pdfjs-dist'
 
 interface PDFViewerProps {
   file: string
+}
+
+// Set up the worker source
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+  ).toString()
 }
 
 export function PDFViewer({ file }: PDFViewerProps) {
@@ -16,28 +25,6 @@ export function PDFViewer({ file }: PDFViewerProps) {
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const loadWorker = async () => {
-      try {
-        // First try local worker for mobile
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-          const response = await fetch('/pdf.worker.min.mjs')
-          if (response.ok) {
-            pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-            return
-          }
-        }
-        // Fallback to CDN
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.worker.min.mjs`
-      } catch (error) {
-        console.error('Error loading PDF worker:', error)
-        // Final fallback to CDN
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.8.69/build/pdf.worker.min.mjs`
-      }
-    }
-    loadWorker()
-  }, [])
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages)

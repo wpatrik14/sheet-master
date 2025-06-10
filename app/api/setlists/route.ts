@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server"
 import { v4 as uuidv4 } from "uuid"
-import { list, put, head } from '@vercel/blob'
+import { getDb } from "@/lib/db"
 
 export async function GET() {
   try {
-    const { blobs } = await list({
-      prefix: 'setlists/',
-      limit: 100
-    })
-
-    const setlists = blobs.map(blob => ({
-      id: blob.pathname.replace('setlists/', '').replace('.json', ''),
-      name: blob.pathname.split('/').pop()?.replace('.json', '') || 'Untitled Setlist',
-      createdAt: blob.uploadedAt.toISOString(),
-      sheetCount: 0 // Will need to track this differently
-    }))
+    const db = getDb()
+    
+    // Get setlists with sheet count
+    const setlists = db.prepare(`
+      SELECT 
+        s.id,
+        s.name,
+        s.createdAt,
+        COUNT(ss.sheetId) as sheetCount
+      FROM setlists s
+      LEFT JOIN setlist_sheets ss ON s.id = ss.setlistId
+      GROUP BY s.id, s.name, s.createdAt
+      ORDER BY s.createdAt DESC
+    `).all()
 
     return NextResponse.json({ setlists })
   } catch (error) {
@@ -34,22 +37,15 @@ export async function POST(request: Request) {
     const id = uuidv4()
     const createdAt = new Date().toISOString()
 
-    const blob = await put(`setlists/${id}.json`, JSON.stringify({
-      name,
-      createdAt,
-      sheets: []
-    }), {
-      access: 'public',
-      contentType: 'application/json',
-      addRandomSuffix: false
-    })
+    const db = getDb()
+    const stmt = db.prepare("INSERT INTO setlists (id, name, createdAt) VALUES (?, ?, ?)")
+    stmt.run(id, name, createdAt)
 
     return NextResponse.json({ 
       id,
       name,
       createdAt,
-      sheetCount: 0,
-      url: blob.url
+      sheetCount: 0
     })
   } catch (error) {
     console.error("Error creating setlist:", error)

@@ -80,15 +80,16 @@ export default function UploadPage() {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to upload sheet")
+        const errorData = await response.json()
+        throw new Error(errorData.message || errorData.details || "Failed to upload sheet")
       }
 
       // Navigate to sheets page
       router.push("/sheets")
       router.refresh()
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error uploading file:", err)
-      setError("Failed to upload file. Please try again.")
+      setError(err.message || "Failed to upload file. Please try again.")
       setIsUploading(false)
     }
   }

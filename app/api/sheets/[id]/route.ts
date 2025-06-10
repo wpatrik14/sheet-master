@@ -1,15 +1,33 @@
 import { NextResponse } from "next/server"
 import { del } from '@vercel/blob'
+import { getDb } from "@/lib/db"
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const fileUrl = `https://blob.vercel-storage.com/${id}.pdf`
+    const db = getDb()
+    
+    // Get sheet from database
+    const sheet = db.prepare("SELECT * FROM sheets WHERE id = ?").get(id) as {
+      id: string
+      title: string
+      filePath: string
+      fileSize: number
+      uploadDate: string
+      updatedAt: string
+    } | undefined
+
+    if (!sheet) {
+      return NextResponse.json({ error: "Sheet not found" }, { status: 404 })
+    }
 
     return NextResponse.json({
-      id,
-      title: id, // Title will need to be stored differently
-      file: fileUrl
+      id: sheet.id,
+      title: sheet.title,
+      file: sheet.filePath,
+      fileSize: sheet.fileSize,
+      uploadDate: sheet.uploadDate,
+      updatedAt: sheet.updatedAt
     })
   } catch (error) {
     console.error("Error fetching sheet:", error)
@@ -20,8 +38,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    const db = getDb()
+    
+    // Get sheet info before deleting
+    const sheet = db.prepare("SELECT filePath FROM sheets WHERE id = ?").get(id) as { filePath: string } | undefined
+    
+    if (!sheet) {
+      return NextResponse.json({ error: "Sheet not found" }, { status: 404 })
+    }
+
     try {
-      await del(`https://blob.vercel-storage.com/${id}.pdf`)
+      // Delete from blob storage
+      await del(sheet.filePath)
+      
+      // Delete from database (this will also cascade delete from setlist_sheets)
+      db.prepare("DELETE FROM sheets WHERE id = ?").run(id)
+      
       return NextResponse.json({ success: true })
     } catch (error) {
       console.error("Error deleting blob:", error)
