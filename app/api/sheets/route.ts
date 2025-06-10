@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { v4 as uuidv4 } from "uuid"
 import { put, list } from '@vercel/blob'
-import { getDb } from "@/lib/db"
 
 const token = process.env.BLOB_READ_WRITE_TOKEN
 if (!token) {
@@ -15,46 +14,87 @@ interface Sheet {
   fileSize: number
   uploadDate: string
   updatedAt: string
-  setlistCount: number
+  setlistCount?: number
+  currentSetlists?: string[]
 }
 
 interface Setlist {
   id: string
   name: string
+  createdAt: string
+  sheets: string[]
+}
+
+async function getSheets(): Promise<Sheet[]> {
+  try {
+    const { blobs } = await list({
+      prefix: 'sheets/',
+      token
+    })
+    
+    const sheets: Sheet[] = []
+    
+    for (const blob of blobs) {
+      if (blob.pathname.endsWith('.json')) {
+        try {
+          const response = await fetch(blob.url)
+          const sheet = await response.json()
+          sheets.push(sheet)
+        } catch (error) {
+          console.error(`Error fetching sheet metadata from ${blob.url}:`, error)
+        }
+      }
+    }
+    
+    return sheets.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
+  } catch (error) {
+    console.error("Error listing sheets:", error)
+    return []
+  }
+}
+
+async function getSetlists(): Promise<Setlist[]> {
+  try {
+    const { blobs } = await list({
+      prefix: 'setlists/',
+      token
+    })
+    
+    const setlists: Setlist[] = []
+    
+    for (const blob of blobs) {
+      if (blob.pathname.endsWith('.json')) {
+        try {
+          const response = await fetch(blob.url)
+          const setlist = await response.json()
+          setlists.push(setlist)
+        } catch (error) {
+          console.error(`Error fetching setlist metadata from ${blob.url}:`, error)
+        }
+      }
+    }
+    
+    return setlists
+  } catch (error) {
+    console.error("Error listing setlists:", error)
+    return []
+  }
 }
 
 export async function GET() {
   try {
-    const db = getDb()
+    const [sheets, setlists] = await Promise.all([getSheets(), getSetlists()])
     
-    // Get sheets with setlist count
-    const sheets = db.prepare(`
-      SELECT 
-        s.id,
-        s.title,
-        s.filePath,
-        s.fileSize,
-        s.uploadDate,
-        s.updatedAt,
-        COUNT(ss.setlistId) as setlistCount
-      FROM sheets s
-      LEFT JOIN setlist_sheets ss ON s.id = ss.sheetId
-      GROUP BY s.id, s.title, s.filePath, s.fileSize, s.uploadDate, s.updatedAt
-      ORDER BY s.uploadDate DESC
-    `).all() as Sheet[]
-
-    // Get current setlists for each sheet
+    // Add setlist information to each sheet
     const sheetsWithSetlists = sheets.map(sheet => {
-      const setlists = db.prepare(`
-        SELECT sl.id, sl.name
-        FROM setlists sl
-        JOIN setlist_sheets ss ON sl.id = ss.setlistId
-        WHERE ss.sheetId = ?
-      `).all(sheet.id) as Setlist[]
+      const currentSetlists = setlists
+        .filter(setlist => setlist.sheets.includes(sheet.id))
+        .map(setlist => setlist.id)
       
       return {
         ...sheet,
-        currentSetlists: setlists
+        setlistCount: currentSetlists.length,
+        currentSetlists
       }
     })
 
@@ -83,20 +123,7 @@ export async function POST(request: Request) {
         { 
           error: "Invalid request format",
           details: `Expected multipart/form-data, got ${contentType || 'undefined'}`,
-          solution: "When uploading files, use FormData with Content-Type: multipart/form-data",
-          example: `
-            // Client-side JavaScript example:
-            const formData = new FormData();
-            formData.append('title', 'My Sheet');
-            formData.append('file', fileInput.files[0]);
-            
-            const response = await fetch('/api/sheets', {
-              method: 'POST',
-              body: formData
-              // Note: Don't set Content-Type header manually - 
-              // the browser will set it automatically with boundary
-            });
-          `
+          solution: "When uploading files, use FormData with Content-Type: multipart/form-data"
         },
         { status: 400 }
       )
@@ -171,27 +198,35 @@ export async function POST(request: Request) {
       // Ensure we're working with a Buffer for reliable upload
       const buffer = Buffer.from(await file.arrayBuffer())
       
-      const blob = await put(`${id}.pdf`, buffer, {
+      // Upload PDF file
+      const pdfBlob = await put(`pdfs/${id}.pdf`, buffer, {
         access: 'public',
         contentType: 'application/pdf',
         addRandomSuffix: false,
-        multipart: true, // Enable multipart upload for large files
+        multipart: true,
         token
       })
 
-      // Save to database
-      const db = getDb()
-      const stmt = db.prepare("INSERT INTO sheets (id, title, filePath, fileSize, uploadDate, updatedAt) VALUES (?, ?, ?, ?, ?, ?)")
-      stmt.run(id, title, blob.url, file.size, uploadDate, uploadDate)
-
-      return NextResponse.json({ 
-        id, 
+      // Create sheet metadata
+      const sheetMetadata: Sheet = {
+        id,
         title,
-        filePath: blob.url,
+        filePath: pdfBlob.url,
         fileSize: file.size,
         uploadDate,
         updatedAt: uploadDate
-      }, { status: 201 })
+      }
+
+      // Upload metadata as JSON
+      const metadataBlob = await put(`sheets/${id}.json`, JSON.stringify(sheetMetadata), {
+        access: 'public',
+        contentType: 'application/json',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        token
+      })
+
+      return NextResponse.json(sheetMetadata, { status: 201 })
     } catch (blobError: any) {
       console.error("Error uploading to blob storage:", blobError)
       return NextResponse.json(

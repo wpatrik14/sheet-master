@@ -1,137 +1,250 @@
 import { NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
+import { put, list, del } from '@vercel/blob'
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+const token = process.env.BLOB_READ_WRITE_TOKEN
+if (!token) {
+  throw new Error('BLOB_READ_WRITE_TOKEN is required')
+}
+
+interface Setlist {
+  id: string
+  name: string
+  createdAt: string
+  sheets: string[]
+}
+
+interface Sheet {
+  id: string
+  title: string
+  filePath: string
+  fileSize: number
+  uploadDate: string
+  updatedAt: string
+}
+
+async function getSetlistById(id: string): Promise<Setlist | null> {
   try {
-    const { id } = await params
-    const db = getDb()
+    const { blobs } = await list({
+      prefix: `setlists/${id}.json`,
+      token
+    })
     
-    // Get setlist with its sheets
-    const setlist = db.prepare(`
-      SELECT id, name, createdAt FROM setlists WHERE id = ?
-    `).get(id)
+    if (blobs.length === 0) {
+      return null
+    }
+    
+    const response = await fetch(blobs[0].url)
+    const setlist = await response.json()
+    return setlist
+  } catch (error) {
+    console.error(`Error fetching setlist ${id}:`, error)
+    return null
+  }
+}
+
+async function getSheetById(id: string): Promise<Sheet | null> {
+  try {
+    const { blobs } = await list({
+      prefix: `sheets/${id}.json`,
+      token
+    })
+    
+    if (blobs.length === 0) {
+      return null
+    }
+    
+    const response = await fetch(blobs[0].url)
+    const sheet = await response.json()
+    return sheet
+  } catch (error) {
+    console.error(`Error fetching sheet ${id}:`, error)
+    return null
+  }
+}
+
+async function updateSetlist(setlist: Setlist): Promise<void> {
+  await put(`setlists/${setlist.id}.json`, JSON.stringify(setlist), {
+    access: 'public',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    token
+  })
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const setlist = await getSetlistById(params.id)
     
     if (!setlist) {
-      return NextResponse.json({ error: "Setlist not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Setlist not found" },
+        { status: 404 }
+      )
     }
 
-    // Get sheets in this setlist with their details
-    const sheets = db.prepare(`
-      SELECT 
-        s.id,
-        s.title,
-        s.filePath,
-        ss.position
-      FROM setlist_sheets ss
-      JOIN sheets s ON ss.sheetId = s.id
-      WHERE ss.setlistId = ?
-      ORDER BY ss.position
-    `).all(id)
+    // Get sheet details for each sheet in the setlist
+    const sheetDetails = []
+    for (const sheetId of setlist.sheets) {
+      const sheet = await getSheetById(sheetId)
+      if (sheet) {
+        sheetDetails.push({
+          id: sheet.id,
+          title: sheet.title,
+          filePath: sheet.filePath,
+          position: setlist.sheets.indexOf(sheetId)
+        })
+      }
+    }
 
     return NextResponse.json({
       ...setlist,
-      sheets: sheets || []
+      sheets: sheetDetails
     })
   } catch (error) {
     console.error("Error fetching setlist:", error)
-    return NextResponse.json({ error: "Failed to fetch setlist" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to fetch setlist" },
+      { status: 500 }
+    )
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = await params
-    const { name, sheets } = await request.json()
-    const db = getDb()
+    const setlist = await getSetlistById(params.id)
     
-    // Check if setlist exists
-    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(id)
     if (!setlist) {
-      return NextResponse.json({ error: "Setlist not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Setlist not found" },
+        { status: 404 }
+      )
     }
 
-    // Update setlist name if provided
-    if (name) {
-      db.prepare("UPDATE setlists SET name = ? WHERE id = ?").run(name, id)
+    const { name, sheets } = await request.json()
+
+    if (name !== undefined) {
+      if (!name || typeof name !== "string" || name.trim().length === 0) {
+        return NextResponse.json(
+          { error: "Setlist name is required" },
+          { status: 400 }
+        )
+      }
+      setlist.name = name.trim()
     }
 
-    // Update sheets if provided
-    if (sheets && Array.isArray(sheets)) {
-      // Remove existing sheets from setlist
-      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ?").run(id)
-      
-      // Add new sheets with positions
-      const insertStmt = db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)")
-      sheets.forEach((sheetId: string, index: number) => {
-        insertStmt.run(id, sheetId, index)
-      })
+    if (sheets !== undefined) {
+      if (!Array.isArray(sheets)) {
+        return NextResponse.json(
+          { error: "Sheets must be an array" },
+          { status: 400 }
+        )
+      }
+      setlist.sheets = sheets
     }
 
-    return NextResponse.json({ success: true })
+    await updateSetlist(setlist)
+
+    return NextResponse.json(setlist)
   } catch (error) {
     console.error("Error updating setlist:", error)
-    return NextResponse.json({ error: "Failed to update setlist" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to update setlist" },
+      { status: 500 }
+    )
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = await params
-    const { sheetId } = await request.json()
+    const setlist = await getSetlistById(params.id)
     
-    if (!sheetId) {
-      return NextResponse.json({ error: "sheetId is required" }, { status: 400 })
+    if (!setlist) {
+      return NextResponse.json(
+        { error: "Setlist not found" },
+        { status: 404 }
+      )
     }
 
-    const db = getDb()
-    
-    // Check if setlist exists
-    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(id)
-    if (!setlist) {
-      return NextResponse.json({ error: "Setlist not found" }, { status: 404 })
+    const { sheetId } = await request.json()
+
+    if (!sheetId || typeof sheetId !== "string") {
+      return NextResponse.json(
+        { error: "Sheet ID is required" },
+        { status: 400 }
+      )
     }
 
     // Check if sheet exists
-    const sheet = db.prepare("SELECT id FROM sheets WHERE id = ?").get(sheetId)
+    const sheet = await getSheetById(sheetId)
     if (!sheet) {
-      return NextResponse.json({ error: "Sheet not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Sheet not found" },
+        { status: 404 }
+      )
     }
 
-    // Check if sheet already in setlist
-    const existing = db.prepare("SELECT setlistId FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").get(id, sheetId)
-    if (existing) {
-      return NextResponse.json({ error: "Sheet already in setlist" }, { status: 400 })
+    // Check if sheet is already in setlist
+    if (setlist.sheets.includes(sheetId)) {
+      return NextResponse.json(
+        { error: "Sheet already in setlist" },
+        { status: 400 }
+      )
     }
-
-    // Get next position
-    const maxPosition = db.prepare("SELECT MAX(position) as maxPos FROM setlist_sheets WHERE setlistId = ?").get(id) as { maxPos: number | null }
-    const nextPosition = (maxPosition?.maxPos || -1) + 1
 
     // Add sheet to setlist
-    db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)").run(id, sheetId, nextPosition)
+    setlist.sheets.push(sheetId)
+    await updateSetlist(setlist)
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ message: "Sheet added to setlist successfully" })
   } catch (error) {
     console.error("Error adding sheet to setlist:", error)
-    return NextResponse.json({ error: "Failed to add sheet to setlist" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to add sheet to setlist" },
+      { status: 500 }
+    )
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = await params
-    const db = getDb()
+    const setlist = await getSetlistById(params.id)
     
-    // Delete setlist (cascade will handle setlist_sheets)
-    const result = db.prepare("DELETE FROM setlists WHERE id = ?").run(id)
-    
-    if (result.changes === 0) {
-      return NextResponse.json({ error: "Setlist not found" }, { status: 404 })
+    if (!setlist) {
+      return NextResponse.json(
+        { error: "Setlist not found" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json({ success: true })
+    // Delete setlist metadata file
+    const { blobs } = await list({
+      prefix: `setlists/${params.id}.json`,
+      token
+    })
+    
+    for (const blob of blobs) {
+      await del(blob.url, { token })
+    }
+
+    return NextResponse.json({ message: "Setlist deleted successfully" })
   } catch (error) {
     console.error("Error deleting setlist:", error)
-    return NextResponse.json({ error: "Failed to delete setlist" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to delete setlist" },
+      { status: 500 }
+    )
   }
 }
