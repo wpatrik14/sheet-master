@@ -14,7 +14,7 @@ interface PDFViewerProps {
 // Set up the worker source
 if (typeof window !== 'undefined') {
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
+    'pdfjs-dist/build/pdf.worker.js',
     import.meta.url,
   ).toString()
 }
