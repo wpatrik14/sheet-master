@@ -130,31 +130,62 @@ export default function EditSetlistPage() {
     }
   }
 
-  const addSheetsToSetlist = () => {
+  const addSheetsToSetlist = async () => {
     if (!setlist || selectedSheets.length === 0) return
 
-    // Get the selected sheets from available sheets
-    const sheetsToAdd = availableSheets.filter((sheet) => selectedSheets.includes(sheet.id))
+    try {
+      // Get the selected sheets from available sheets
+      const sheetsToAdd = availableSheets.filter((sheet) => selectedSheets.includes(sheet.id))
 
-    // Add to current sheets with proper positions
-    const updatedSheets = [...sheets, ...sheetsToAdd.map((sheet, i) => ({
-      ...sheet,
-      position: sheets.length + i
-    }))]
-    setSheets(updatedSheets)
+      // Add to current sheets with proper positions
+      const updatedSheets = [...sheets, ...sheetsToAdd.map((sheet, i) => ({
+        ...sheet,
+        position: sheets.length + i
+      }))]
 
-    // Remove from available sheets
-    const updatedAvailableSheets = availableSheets.filter((sheet) => !selectedSheets.includes(sheet.id))
-    setAvailableSheets(updatedAvailableSheets)
+      // Save to backend
+      const response = await fetch(`/api/setlists/${setlistId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: setlistName.trim(),
+          sheets: updatedSheets.map((sheet) => sheet.id),
+        }),
+      })
 
-    // Clear selection
-    setSelectedSheets([])
-    
-    // Force re-render to update perform button state
-    setSetlist(prev => prev ? {...prev, sheets: updatedSheets} : null)
+      if (!response.ok) {
+        throw new Error("Failed to update setlist")
+      }
+
+      // Update local state only after successful save
+      setSheets(updatedSheets)
+
+      // Remove from available sheets
+      const updatedAvailableSheets = availableSheets.filter((sheet) => !selectedSheets.includes(sheet.id))
+      setAvailableSheets(updatedAvailableSheets)
+
+      // Clear selection
+      setSelectedSheets([])
+      
+      // Force re-render to update perform button state
+      setSetlist(prev => prev ? {...prev, sheets: updatedSheets} : null)
+
+      toast({
+        description: "Sheets added to setlist successfully",
+      })
+    } catch (error) {
+      console.error("Error adding sheets to setlist:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add sheets to setlist. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const removeSheetFromSetlist = (sheetId: string) => {
+  const removeSheetFromSetlist = async (sheetId: string) => {
     if (!setlist) return
 
     // Find the sheet to remove
@@ -162,34 +193,125 @@ export default function EditSetlistPage() {
 
     if (!sheetToRemove) return
 
-    // Remove from current sheets
-    const updatedSheets = sheets.filter((sheet) => sheet.id !== sheetId)
-    setSheets(updatedSheets)
+    try {
+      // Remove from current sheets
+      const updatedSheets = sheets.filter((sheet) => sheet.id !== sheetId)
 
-    // Add to available sheets
-    setAvailableSheets([...availableSheets, sheetToRemove])
+      // Save to backend
+      const response = await fetch(`/api/setlists/${setlistId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: setlistName.trim(),
+          sheets: updatedSheets.map((sheet) => sheet.id),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update setlist")
+      }
+
+      // Update local state only after successful save
+      setSheets(updatedSheets)
+
+      // Add to available sheets
+      setAvailableSheets([...availableSheets, sheetToRemove])
+
+      toast({
+        description: "Sheet removed from setlist successfully",
+      })
+    } catch (error) {
+      console.error("Error removing sheet from setlist:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove sheet from setlist. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const moveSheetUp = (index: number) => {
+  const moveSheetUp = async (index: number) => {
     if (index === 0 || !setlist) return
 
-    const updatedSheets = [...sheets]
-    const temp = updatedSheets[index]
-    updatedSheets[index] = updatedSheets[index - 1]
-    updatedSheets[index - 1] = temp
+    try {
+      const updatedSheets = [...sheets]
+      const temp = updatedSheets[index]
+      updatedSheets[index] = updatedSheets[index - 1]
+      updatedSheets[index - 1] = temp
 
-    setSheets(updatedSheets)
+      // Save to backend
+      const response = await fetch(`/api/setlists/${setlistId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: setlistName.trim(),
+          sheets: updatedSheets.map((sheet) => sheet.id),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update setlist")
+      }
+
+      // Update local state only after successful save
+      setSheets(updatedSheets)
+
+      toast({
+        description: "Sheet order updated successfully",
+      })
+    } catch (error) {
+      console.error("Error updating sheet order:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update sheet order. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const moveSheetDown = (index: number) => {
+  const moveSheetDown = async (index: number) => {
     if (index === sheets.length - 1 || !setlist) return
 
-    const updatedSheets = [...sheets]
-    const temp = updatedSheets[index]
-    updatedSheets[index] = updatedSheets[index + 1]
-    updatedSheets[index + 1] = temp
+    try {
+      const updatedSheets = [...sheets]
+      const temp = updatedSheets[index]
+      updatedSheets[index] = updatedSheets[index + 1]
+      updatedSheets[index + 1] = temp
 
-    setSheets(updatedSheets)
+      // Save to backend
+      const response = await fetch(`/api/setlists/${setlistId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: setlistName.trim(),
+          sheets: updatedSheets.map((sheet) => sheet.id),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update setlist")
+      }
+
+      // Update local state only after successful save
+      setSheets(updatedSheets)
+
+      toast({
+        description: "Sheet order updated successfully",
+      })
+    } catch (error) {
+      console.error("Error updating sheet order:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update sheet order. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   if (isLoading) {
