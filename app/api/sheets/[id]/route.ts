@@ -13,6 +13,7 @@ interface Sheet {
   fileSize: number
   uploadDate: string
   updatedAt: string
+  fileType: string
 }
 
 async function getSheetById(id: string): Promise<Sheet | null> {
@@ -76,16 +77,28 @@ export async function DELETE(
       )
     }
 
-    // Delete both the PDF file and metadata
+    // Delete both the file and metadata
     const deletePromises = []
     
-    // Delete PDF file
+    // Delete file (could be PDF or image)
+    // Check both pdfs/ and images/ folders
     const { blobs: pdfBlobs } = await list({
-      prefix: `pdfs/${params.id}.pdf`,
+      prefix: `pdfs/${params.id}`,
       token
     })
     
+    const { blobs: imageBlobs } = await list({
+      prefix: `images/${params.id}`,
+      token
+    })
+    
+    // Delete PDF files
     for (const blob of pdfBlobs) {
+      deletePromises.push(del(blob.url, { token }))
+    }
+    
+    // Delete image files
+    for (const blob of imageBlobs) {
       deletePromises.push(del(blob.url, { token }))
     }
     

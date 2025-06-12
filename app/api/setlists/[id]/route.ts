@@ -20,6 +20,7 @@ interface Sheet {
   fileSize: number
   uploadDate: string
   updatedAt: string
+  fileType: string
 }
 
 async function getSetlistById(id: string): Promise<Setlist | null> {
@@ -95,6 +96,7 @@ export async function GET(
           id: sheet.id,
           title: sheet.title,
           filePath: sheet.filePath,
+          fileType: sheet.fileType,
           position: setlist.sheets.indexOf(sheetId)
         })
       }

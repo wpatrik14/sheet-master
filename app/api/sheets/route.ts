@@ -14,6 +14,7 @@ interface Sheet {
   fileSize: number
   uploadDate: string
   updatedAt: string
+  fileType: string
   setlistCount?: number
   currentSetlists?: string[]
 }
@@ -161,19 +162,30 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { 
           error: "Validation failed",
-          details: "PDF file is required"
+          details: "File is required"
         },
         { status: 400 }
       )
     }
 
     // Validate file type using both MIME type and extension
-    const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')
-    if (!isPDF) {
+    const allowedTypes = [
+      "application/pdf",
+      "image/png", 
+      "image/jpeg",
+      "image/jpg"
+    ]
+    
+    const allowedExtensions = ['.pdf', '.png', '.jpg', '.jpeg']
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+    
+    const isValidType = allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension)
+    
+    if (!isValidType) {
       return NextResponse.json(
         { 
           error: "Invalid file type",
-          details: "Only PDF files are accepted"
+          details: "Only PDF, PNG, and JPG files are accepted"
         },
         { status: 400 }
       )
@@ -198,10 +210,23 @@ export async function POST(request: Request) {
       // Ensure we're working with a Buffer for reliable upload
       const buffer = Buffer.from(await file.arrayBuffer())
       
-      // Upload PDF file
-      const pdfBlob = await put(`pdfs/${id}.pdf`, buffer, {
+      // Determine file extension and content type
+      const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+      let contentType = file.type
+      let folderPrefix = 'files'
+      
+      if (fileExtension === '.pdf' || file.type === 'application/pdf') {
+        contentType = 'application/pdf'
+        folderPrefix = 'pdfs'
+      } else if (['.png', '.jpg', '.jpeg'].includes(fileExtension) || file.type.startsWith('image/')) {
+        contentType = file.type || 'image/jpeg'
+        folderPrefix = 'images'
+      }
+      
+      // Upload file with appropriate extension and content type
+      const fileBlob = await put(`${folderPrefix}/${id}${fileExtension}`, buffer, {
         access: 'public',
-        contentType: 'application/pdf',
+        contentType: contentType,
         addRandomSuffix: false,
         multipart: true,
         token
@@ -211,10 +236,11 @@ export async function POST(request: Request) {
       const sheetMetadata: Sheet = {
         id,
         title,
-        filePath: pdfBlob.url,
+        filePath: fileBlob.url,
         fileSize: file.size,
         uploadDate,
-        updatedAt: uploadDate
+        updatedAt: uploadDate,
+        fileType: contentType
       }
 
       // Upload metadata as JSON

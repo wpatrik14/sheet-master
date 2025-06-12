@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PDFViewer } from "@/components/pdf-viewer"
+import { ImageViewer } from "@/components/image-viewer"
 import { ChevronLeft, ChevronRight, X, List, Maximize, Minimize } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useToast } from "@/hooks/use-toast"
@@ -14,6 +15,7 @@ interface SheetMusic {
   title: string
   file?: string
   position?: number
+  fileType?: string
 }
 
 interface Setlist {
@@ -221,8 +223,16 @@ export default function PerformPage() {
         </div>
       </div>
 
-      {/* PDF Viewer */}
-      <div className="flex-1 overflow-hidden">{currentSheetFile && <PDFViewer file={currentSheetFile} />}</div>
+      {/* File Viewer */}
+      <div className="flex-1 overflow-hidden">
+        {currentSheetFile && (
+          (currentSheet.fileType === 'application/pdf' || !currentSheet.fileType) ? (
+            <PDFViewer file={currentSheetFile} />
+          ) : (
+            <ImageViewer file={currentSheetFile} title={currentSheet.title} />
+          )
+        )}
+      </div>
 
       {/* Bottom navigation */}
       <div className="flex items-center justify-between p-2 border-t bg-background">

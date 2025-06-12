@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Eye, FileMusic, Plus, Search, Trash, Upload } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { PDFViewer } from "@/components/pdf-viewer"
+import { ImageViewer } from "@/components/image-viewer"
 import { useToast } from "@/hooks/use-toast"
 
 interface Sheet {
@@ -16,6 +17,7 @@ interface Sheet {
   filePath: string
   fileSize: number
   uploadDate: string
+  fileType: string
   setlistCount: number
   currentSetlists: string[] // IDs of setlists this sheet is already in
 }
@@ -236,7 +238,11 @@ export default function SheetsPage() {
                     </DialogHeader>
                     {selectedSheetId === sheet.id && selectedSheetFile && (
                       <div className="h-full overflow-auto">
-                        <PDFViewer file={selectedSheetFile} />
+                        {(sheet.fileType === 'application/pdf' || !sheet.fileType) ? (
+                          <PDFViewer file={selectedSheetFile} />
+                        ) : (
+                          <ImageViewer file={selectedSheetFile} title={sheet.title} />
+                        )}
                       </div>
                     )}
                   </DialogContent>

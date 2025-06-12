@@ -25,9 +25,16 @@ export default function UploadPage() {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0]
 
-      // Check if file is a PDF
-      if (selectedFile.type !== "application/pdf") {
-        setError("Only PDF files are supported")
+      // Check if file is a PDF or image
+      const allowedTypes = [
+        "application/pdf",
+        "image/png", 
+        "image/jpeg",
+        "image/jpg"
+      ]
+      
+      if (!allowedTypes.includes(selectedFile.type)) {
+        setError("Only PDF, PNG, and JPG files are supported")
         return
       }
 
@@ -119,7 +126,7 @@ export default function UploadPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="file">PDF File</Label>
+              <Label htmlFor="file">Sheet Music File</Label>
               <div
                 className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
@@ -128,7 +135,7 @@ export default function UploadPage() {
                   ref={fileInputRef}
                   type="file"
                   id="file"
-                  accept="application/pdf"
+                  accept="application/pdf,image/png,image/jpeg,image/jpg"
                   className="hidden"
                   onChange={handleFileChange}
                 />
@@ -159,9 +166,9 @@ export default function UploadPage() {
                 ) : (
                   <div>
                     <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-                    <p className="font-medium">Drag and drop your PDF here</p>
+                    <p className="font-medium">Drag and drop your sheet music here</p>
                     <p className="text-sm text-muted-foreground mt-1">Or click to browse files</p>
-                    <p className="text-xs text-muted-foreground mt-4">PDF files only, max 10MB</p>
+                    <p className="text-xs text-muted-foreground mt-4">PDF, PNG, and JPG files supported, max 10MB</p>
                   </div>
                 )}
               </div>
