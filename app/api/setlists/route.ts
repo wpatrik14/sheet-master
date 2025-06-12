@@ -92,10 +92,10 @@ export async function GET() {
     return NextResponse.json({ setlists: setlistsWithCounts })
   } catch (error) {
     console.error("Error fetching setlists:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch setlists" },
-      { status: 500 }
-    )
+      return NextResponse.json(
+        { error: "Nem sikerült betölteni a dal-listákat" },
+        { status: 500 }
+      )
   }
 }
 
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
-        { error: "Setlist name is required" },
+        { error: "Dal-lista név szükséges" },
         { status: 400 }
       )
     }
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating setlist:", error)
     return NextResponse.json(
-      { error: "Failed to create setlist" },
+      { error: "Nem sikerült létrehozni a dal-listát" },
       { status: 500 }
     )
   }

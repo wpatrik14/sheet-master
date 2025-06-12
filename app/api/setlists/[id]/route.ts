@@ -82,7 +82,7 @@ export async function GET(
     
     if (!setlist) {
       return NextResponse.json(
-        { error: "Setlist not found" },
+        { error: "Dal-lista nem található" },
         { status: 404 }
       )
     }
@@ -109,7 +109,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching setlist:", error)
     return NextResponse.json(
-      { error: "Failed to fetch setlist" },
+      { error: "Nem sikerült betölteni a dal-listát" },
       { status: 500 }
     )
   }
@@ -124,7 +124,7 @@ export async function PUT(
     
     if (!setlist) {
       return NextResponse.json(
-        { error: "Setlist not found" },
+        { error: "Dal-lista nem található" },
         { status: 404 }
       )
     }
@@ -134,7 +134,7 @@ export async function PUT(
     if (name !== undefined) {
       if (!name || typeof name !== "string" || name.trim().length === 0) {
         return NextResponse.json(
-          { error: "Setlist name is required" },
+          { error: "Dal-lista név szükséges" },
           { status: 400 }
         )
       }
@@ -144,7 +144,7 @@ export async function PUT(
     if (sheets !== undefined) {
       if (!Array.isArray(sheets)) {
         return NextResponse.json(
-          { error: "Sheets must be an array" },
+          { error: "A kották listája tömb kell legyen" },
           { status: 400 }
         )
       }
@@ -157,7 +157,7 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating setlist:", error)
     return NextResponse.json(
-      { error: "Failed to update setlist" },
+      { error: "Nem sikerült frissíteni a dal-listát" },
       { status: 500 }
     )
   }
@@ -172,7 +172,7 @@ export async function POST(
     
     if (!setlist) {
       return NextResponse.json(
-        { error: "Setlist not found" },
+        { error: "Dal-lista nem található" },
         { status: 404 }
       )
     }
@@ -181,7 +181,7 @@ export async function POST(
 
     if (!sheetId || typeof sheetId !== "string") {
       return NextResponse.json(
-        { error: "Sheet ID is required" },
+        { error: "Kotta azonosító szükséges" },
         { status: 400 }
       )
     }
@@ -190,7 +190,7 @@ export async function POST(
     const sheet = await getSheetById(sheetId)
     if (!sheet) {
       return NextResponse.json(
-        { error: "Sheet not found" },
+        { error: "Kotta nem található" },
         { status: 404 }
       )
     }
@@ -198,7 +198,7 @@ export async function POST(
     // Check if sheet is already in setlist
     if (setlist.sheets.includes(sheetId)) {
       return NextResponse.json(
-        { error: "Sheet already in setlist" },
+        { error: "A kotta már benne van a dal-listában" },
         { status: 400 }
       )
     }
@@ -207,11 +207,11 @@ export async function POST(
     setlist.sheets.push(sheetId)
     await updateSetlist(setlist)
 
-    return NextResponse.json({ message: "Sheet added to setlist successfully" })
+    return NextResponse.json({ message: "Kotta sikeresen hozzáadva a dal-listához" })
   } catch (error) {
     console.error("Error adding sheet to setlist:", error)
     return NextResponse.json(
-      { error: "Failed to add sheet to setlist" },
+      { error: "Nem sikerült hozzáadni a kottát a dal-listához" },
       { status: 500 }
     )
   }
@@ -226,7 +226,7 @@ export async function DELETE(
     
     if (!setlist) {
       return NextResponse.json(
-        { error: "Setlist not found" },
+        { error: "Dal-lista nem található" },
         { status: 404 }
       )
     }
@@ -241,11 +241,11 @@ export async function DELETE(
       await del(blob.url, { token })
     }
 
-    return NextResponse.json({ message: "Setlist deleted successfully" })
+    return NextResponse.json({ message: "Dal-lista sikeresen törölve" })
   } catch (error) {
     console.error("Error deleting setlist:", error)
     return NextResponse.json(
-      { error: "Failed to delete setlist" },
+      { error: "Nem sikerült törölni a dal-listát" },
       { status: 500 }
     )
   }
