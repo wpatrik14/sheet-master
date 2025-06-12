@@ -161,20 +161,20 @@ export default function SheetsPage() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <p>Loading sheets...</p>
+          <p>Kották betöltése...</p>
         </div>
       ) : filteredSheets.length === 0 ? (
         <div className="text-center py-12">
           <FileMusic className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-medium mb-2">No sheets found</h2>
+          <h2 className="text-xl font-medium mb-2">Nem található kotta</h2>
           <p className="text-muted-foreground mb-4">
             {sheets.length === 0
-              ? "Upload your first sheet music to get started"
-              : "No sheets match your search criteria"}
+              ? "Töltsd fel az első kottádat a kezdéshez"
+              : "Nincs kotta ami megfelel a keresési feltételeknek"}
           </p>
           {sheets.length === 0 && (
             <Link href="/upload">
-              <Button>Upload Sheet Music</Button>
+              <Button>Kotta feltöltése</Button>
             </Link>
           )}
         </div>
@@ -189,12 +189,12 @@ export default function SheetsPage() {
                     <Dialog>
                       <DialogTrigger asChild>
                         <button className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 ml-2 hover:bg-blue-100 cursor-pointer">
-                          In {sheet.setlistCount} setlist{sheet.setlistCount !== 1 ? 's' : ''}
+                          {sheet.setlistCount} dal-listában
                         </button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
-                          <DialogTitle>Setlists containing "{sheet.title}"</DialogTitle>
+                          <DialogTitle>Dal-listák amelyek tartalmazzák: "{sheet.title}"</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-2 py-4">
                           {(Array.isArray(sheet.currentSetlists) ? sheet.currentSetlists : []).map(setlistId => {
@@ -204,7 +204,7 @@ export default function SheetsPage() {
                                 <span>{setlist.name}</span>
                                 <Link href={`/setlists/${setlistId}`}>
                                   <Button variant="ghost" size="sm">
-                                    View
+                                    Megtekintés
                                   </Button>
                                 </Link>
                               </div>
@@ -221,7 +221,7 @@ export default function SheetsPage() {
                   <FileMusic className="h-12 w-12 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Uploaded on {new Date(sheet.uploadDate).toLocaleDateString()}
+                  Feltöltve: {new Date(sheet.uploadDate).toLocaleDateString()}
                 </p>
               </CardContent>
               <CardFooter className="flex justify-between">
@@ -252,24 +252,24 @@ export default function SheetsPage() {
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <Plus className="h-4 w-4 mr-2" />
-                        Műsorlistához adás
+                        Dal-listához adás
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Add to Setlist</DialogTitle>
+                        <DialogTitle>Dal-listához adás</DialogTitle>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                           <label htmlFor="setlist" className="text-right">
-                            Setlist
+                            Dal-lista
                           </label>
                           <select
                             id="setlist"
                             className="col-span-3 border rounded p-2"
                             onChange={(e) => setSelectedSetlist(e.target.value)}
                           >
-                            <option value="">Select a setlist</option>
+                            <option value="">Válassz dal-listát</option>
                             {Array.isArray(setlists) && setlists
                               .filter(setlist => {
                                 // Skip if sheet is already in this setlist
@@ -333,7 +333,7 @@ export default function SheetsPage() {
                             }
                           }}
                         >
-                          Add
+                          Hozzáadás
                         </Button>
                       </div>
                     </DialogContent>

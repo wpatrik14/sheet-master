@@ -22,8 +22,8 @@ export default function Home() {
         <Link href="/setlists" className="block">
           <div className="border rounded-lg p-6 h-full flex flex-col items-center justify-center text-center hover:border-primary transition-colors">
             <ListMusic className="h-12 w-12 mb-4 text-primary" />
-            <h2 className="text-2xl font-semibold mb-2">Műsorlisták</h2>
-            <p className="text-muted-foreground">Hozz létre és kezelj műsorlistákat az előadásaidhoz</p>
+            <h2 className="text-2xl font-semibold mb-2">Dal-listák</h2>
+            <p className="text-muted-foreground">Hozz létre és kezelj dal-listákat az előadásaidhoz</p>
           </div>
         </Link>
 

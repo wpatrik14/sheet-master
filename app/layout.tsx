@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Kottakezelő",
-  description: "Kezeld a kottáidat és műsorlistáidat az előadásokhoz",
+  description: "Kezeld a kottáidat és dal-listáidat az előadásokhoz",
     generator: 'v0.dev'
 }
 
