@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { FileMusic, ArrowLeft, Save, Plus, Trash, MoveUp, MoveDown, Play } from "lucide-react"
+import { FileMusic, ArrowLeft, Save, Plus, Trash, MoveUp, MoveDown, Play, Search } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -48,6 +48,7 @@ export default function EditSetlistPage() {
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([])
   const [selectedSheets, setSelectedSheets] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
     fetchSetlistData()
@@ -115,10 +116,11 @@ export default function EditSetlistPage() {
         description: "Setlist saved successfully",
       })
 
-      // Update local state
+      // Update local state with the new name and current sheets
       setSetlist({
         ...setlist,
         name: setlistName.trim(),
+        sheets: sheets
       })
     } catch (error) {
       console.error("Error saving setlist:", error)
@@ -314,6 +316,11 @@ export default function EditSetlistPage() {
     }
   }
 
+  // Filter available sheets based on search query
+  const filteredAvailableSheets = availableSheets.filter((sheet) =>
+    sheet.title.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   if (isLoading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>
   }
@@ -371,26 +378,43 @@ export default function EditSetlistPage() {
               {availableSheets.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">No more sheets available to add</p>
               ) : (
-                <ScrollArea className="h-[300px] pr-4">
-                  {availableSheets.map((sheet) => (
-                    <div key={sheet.id} className="flex items-center space-x-2 py-2">
-                      <Checkbox
-                        id={`sheet-${sheet.id}`}
-                        checked={selectedSheets.includes(sheet.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedSheets([...selectedSheets, sheet.id])
-                          } else {
-                            setSelectedSheets(selectedSheets.filter((id) => id !== sheet.id))
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`sheet-${sheet.id}`} className="flex-1 cursor-pointer">
-                        {sheet.title}
-                      </Label>
-                    </div>
-                  ))}
-                </ScrollArea>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search sheets..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <ScrollArea className="h-[300px] pr-4">
+                    {filteredAvailableSheets.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        {searchQuery ? "No sheets match your search" : "No sheets available"}
+                      </p>
+                    ) : (
+                      filteredAvailableSheets.map((sheet) => (
+                        <div key={sheet.id} className="flex items-center space-x-2 py-2">
+                          <Checkbox
+                            id={`sheet-${sheet.id}`}
+                            checked={selectedSheets.includes(sheet.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedSheets([...selectedSheets, sheet.id])
+                              } else {
+                                setSelectedSheets(selectedSheets.filter((id) => id !== sheet.id))
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`sheet-${sheet.id}`} className="flex-1 cursor-pointer">
+                            {sheet.title}
+                          </Label>
+                        </div>
+                      ))
+                    )}
+                  </ScrollArea>
+                </div>
               )}
             </div>
             <DialogFooter>
