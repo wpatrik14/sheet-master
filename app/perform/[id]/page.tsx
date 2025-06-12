@@ -178,7 +178,7 @@ export default function PerformPage() {
       <div className="flex items-center justify-between p-2 border-b bg-background">
         <Button variant="ghost" size="sm" onClick={() => router.push("/setlists")}>
           <X className="h-4 w-4 mr-2" />
-          Exit
+          Kilépés
         </Button>
 
         <div className="flex-1 text-center">
@@ -238,13 +238,13 @@ export default function PerformPage() {
       <div className="flex items-center justify-between p-2 border-t bg-background">
         <Button variant="outline" onClick={goToPreviousSheet} disabled={currentSheetIndex === 0}>
           <ChevronLeft className="h-4 w-4 mr-2" />
-          Previous
+          Előző
         </Button>
 
         <div className="text-sm text-muted-foreground">Use arrow keys to navigate • Press F for fullscreen</div>
 
         <Button variant="outline" onClick={goToNextSheet} disabled={currentSheetIndex === sheets.length - 1}>
-          Next
+          Következő
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>

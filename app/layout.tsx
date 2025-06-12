@@ -8,8 +8,8 @@ import Navbar from "@/components/navbar"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Sheet Music Manager",
-  description: "Manage your sheet music and setlists for performances",
+  title: "Kottakezelő",
+  description: "Kezeld a kottáidat és műsorlistáidat az előadásokhoz",
     generator: 'v0.dev'
 }
 

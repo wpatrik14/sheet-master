@@ -34,13 +34,13 @@ export default function UploadPage() {
       ]
       
       if (!allowedTypes.includes(selectedFile.type)) {
-        setError("Only PDF, PNG, and JPG files are supported")
+        setError("Csak PDF, PNG és JPG fájlok támogatottak")
         return
       }
 
       // Check file size (limit to 10MB)
       if (selectedFile.size > 10 * 1024 * 1024) {
-        setError("File size exceeds 10MB limit")
+        setError("A fájl mérete meghaladja a 10MB limitet")
         return
       }
 
@@ -63,12 +63,12 @@ export default function UploadPage() {
 
   const handleUpload = async () => {
     if (!file) {
-      setError("Please select a file to upload")
+      setError("Kérlek válassz egy fájlt a feltöltéshez")
       return
     }
 
     if (!title.trim()) {
-      setError("Please enter a title for your sheet music")
+      setError("Kérlek add meg a kotta címét")
       return
     }
 
@@ -96,14 +96,14 @@ export default function UploadPage() {
       router.refresh()
     } catch (err: any) {
       console.error("Error uploading file:", err)
-      setError(err.message || "Failed to upload file. Please try again.")
+      setError(err.message || "Nem sikerült feltölteni a fájlt. Kérlek próbáld újra.")
       setIsUploading(false)
     }
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-6">Upload Sheet Music</h1>
+      <h1 className="text-3xl font-bold mb-6">Kotta feltöltése</h1>
 
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -116,17 +116,17 @@ export default function UploadPage() {
         <CardContent className="pt-6">
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Cím</Label>
               <Input
                 id="title"
-                placeholder="Enter sheet music title"
+                placeholder="Add meg a kotta címét"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="file">Sheet Music File</Label>
+              <Label htmlFor="file">Kotta fájl</Label>
               <div
                 className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
@@ -160,22 +160,22 @@ export default function UploadPage() {
                         }
                       }}
                     >
-                      Change file
+                      Fájl cseréje
                     </Button>
                   </div>
                 ) : (
                   <div>
                     <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-                    <p className="font-medium">Drag and drop your sheet music here</p>
-                    <p className="text-sm text-muted-foreground mt-1">Or click to browse files</p>
-                    <p className="text-xs text-muted-foreground mt-4">PDF, PNG, and JPG files supported, max 10MB</p>
+                    <p className="font-medium">Húzd ide a kottádat</p>
+                    <p className="text-sm text-muted-foreground mt-1">Vagy kattints a fájlok böngészéséhez</p>
+                    <p className="text-xs text-muted-foreground mt-4">PDF, PNG és JPG fájlok támogatottak, max 10MB</p>
                   </div>
                 )}
               </div>
             </div>
 
             <Button className="w-full" onClick={handleUpload} disabled={isUploading || !file}>
-              {isUploading ? "Uploading..." : "Upload Sheet Music"}
+              {isUploading ? "Feltöltés..." : "Kotta feltöltése"}
             </Button>
           </div>
         </CardContent>

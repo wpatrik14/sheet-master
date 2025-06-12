@@ -140,11 +140,11 @@ export default function SheetsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">My Sheet Music</h1>
+        <h1 className="text-3xl font-bold">Kottáim</h1>
         <Link href="/upload">
           <Button>
             <Upload className="mr-2 h-4 w-4" />
-            Upload New Sheet
+            Új kotta feltöltése
           </Button>
         </Link>
       </div>
@@ -152,7 +152,7 @@ export default function SheetsPage() {
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search sheets..."
+          placeholder="Kották keresése..."
           className="pl-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -229,7 +229,7 @@ export default function SheetsPage() {
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" onClick={() => handlePreviewClick(sheet.id)}>
                       <Eye className="h-4 w-4 mr-2" />
-                      Preview
+                      Előnézet
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl h-[80vh]">
@@ -252,7 +252,7 @@ export default function SheetsPage() {
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <Plus className="h-4 w-4 mr-2" />
-                        Add to Setlist
+                        Műsorlistához adás
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
@@ -340,7 +340,7 @@ export default function SheetsPage() {
                   </Dialog>
                   <Button variant="destructive" size="sm" onClick={() => deleteSheet(sheet.id)}>
                     <Trash className="h-4 w-4 mr-2" />
-                    Delete
+                    Törlés
                   </Button>
                 </div>
               </CardFooter>
