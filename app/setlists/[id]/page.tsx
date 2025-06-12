@@ -335,17 +335,17 @@ export default function EditSetlistPage() {
         <Link href="/setlists">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Setlists
+            Vissza a dal-listákhoz
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold ml-4">Edit Setlist</h1>
+        <h1 className="text-3xl font-bold ml-4">Dal-lista szerkesztése</h1>
       </div>
 
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex items-end gap-4">
             <div className="flex-1">
-              <Label htmlFor="setlist-name">Setlist Name</Label>
+              <Label htmlFor="setlist-name">Dal-lista neve</Label>
               <Input
                 id="setlist-name"
                 value={setlistName}
@@ -355,19 +355,19 @@ export default function EditSetlistPage() {
             </div>
             <Button onClick={saveSetlist} disabled={!setlistName.trim()}>
               <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              Változások mentése
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Sheets in this Setlist</h2>
+        <h2 className="text-xl font-semibold">Kották ebben a dal-listában</h2>
         <Dialog>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Add Sheets
+              Kották hozzáadása
             </Button>
           </DialogTrigger>
           <DialogContent>

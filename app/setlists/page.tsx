@@ -49,8 +49,8 @@ export default function SetlistsPage() {
     } catch (error) {
       console.error("Error fetching setlists:", error)
       toast({
-        title: "Error",
-        description: "Failed to load setlists. Please try again.",
+        title: "Hiba",
+        description: "Nem sikerült betölteni a dal-listákat. Kérlek próbáld újra.",
         variant: "destructive",
       })
     } finally {
@@ -81,13 +81,13 @@ export default function SetlistsPage() {
       setNewSetlistName("")
 
       toast({
-        description: "Setlist created successfully",
+        description: "Dal-lista sikeresen létrehozva",
       })
     } catch (error) {
       console.error("Error creating setlist:", error)
       toast({
-        title: "Error",
-        description: "Failed to create setlist. Please try again.",
+        title: "Hiba",
+        description: "Nem sikerült létrehozni a dal-listát. Kérlek próbáld újra.",
         variant: "destructive",
       })
     }
@@ -107,13 +107,13 @@ export default function SetlistsPage() {
       setSetlists(setlists.filter((setlist) => setlist.id !== id))
 
       toast({
-        description: "Setlist deleted successfully",
+        description: "Dal-lista sikeresen törölve",
       })
     } catch (error) {
       console.error("Error deleting setlist:", error)
       toast({
-        title: "Error",
-        description: "Failed to delete setlist. Please try again.",
+        title: "Hiba",
+        description: "Nem sikerült törölni a dal-listát. Kérlek próbáld újra.",
         variant: "destructive",
       })
     }
@@ -121,36 +121,36 @@ export default function SetlistsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">My Setlists</h1>
+      <h1 className="text-3xl font-bold mb-6">Dal-listáim</h1>
 
       <Dialog>
         <DialogTrigger asChild>
           <Button className="mb-6">
             <Plus className="mr-2 h-4 w-4" />
-            Create New Setlist
+            Új dal-lista létrehozása
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Setlist</DialogTitle>
+            <DialogTitle>Új dal-lista létrehozása</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="setlist-name">Setlist Name</Label>
+            <Label htmlFor="setlist-name">Dal-lista neve</Label>
             <Input
               id="setlist-name"
               value={newSetlistName}
               onChange={(e) => setNewSetlistName(e.target.value)}
-              placeholder="Enter setlist name"
+              placeholder="Add meg a dal-lista nevét"
               className="mt-2"
             />
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">Mégse</Button>
             </DialogClose>
             <DialogClose asChild>
               <Button onClick={createSetlist} disabled={!newSetlistName.trim()}>
-                Create Setlist
+                Dal-lista létrehozása
               </Button>
             </DialogClose>
           </DialogFooter>
@@ -159,14 +159,14 @@ export default function SetlistsPage() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <p>Loading setlists...</p>
+          <p>Dal-listák betöltése...</p>
         </div>
       ) : setlists.length === 0 ? (
         <div className="text-center py-12">
           <ListMusic className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-medium mb-2">No setlists yet</h2>
+          <h2 className="text-xl font-medium mb-2">Még nincsenek dal-listák</h2>
           <p className="text-muted-foreground mb-4">
-            Create your first setlist to organize your sheet music for performances
+            Hozd létre az első dal-listádat a kottáid rendezéséhez az előadásokhoz
           </p>
         </div>
       ) : (
@@ -178,10 +178,10 @@ export default function SetlistsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  {setlist.sheetCount} {setlist.sheetCount === 1 ? "sheet" : "sheets"}
+                  {setlist.sheetCount} kotta
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Created on {new Date(setlist.createdAt).toLocaleDateString()}
+                  Létrehozva: {new Date(setlist.createdAt).toLocaleDateString()}
                 </p>
               </CardContent>
               <CardFooter className="flex justify-between">
@@ -189,18 +189,18 @@ export default function SetlistsPage() {
                   <Link href={`/setlists/${setlist.id}`}>
                     <Button variant="outline" size="sm">
                       <Edit className="h-4 w-4 mr-2" />
-                      Edit
+                      Szerkesztés
                     </Button>
                   </Link>
                   <Button variant="destructive" size="sm" onClick={() => deleteSetlist(setlist.id)}>
                     <Trash className="h-4 w-4 mr-2" />
-                    Delete
+                    Törlés
                   </Button>
                 </div>
                 <Link href={`/perform/${setlist.id}`}>
                   <Button size="sm" disabled={setlist.sheetCount === 0}>
                     <Play className="h-4 w-4 mr-2" />
-                    Perform
+                    Előadás
                   </Button>
                 </Link>
               </CardFooter>
