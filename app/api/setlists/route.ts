@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server"
 import { v4 as uuidv4 } from "uuid"
-import { put, list } from '@vercel/blob'
-
-const token = process.env.BLOB_READ_WRITE_TOKEN
-if (!token) {
-  throw new Error('BLOB_READ_WRITE_TOKEN is required')
-}
+import { getDb } from "@/lib/db"
 
 interface Setlist {
   id: string
@@ -23,73 +18,21 @@ interface Sheet {
   updatedAt: string
 }
 
-async function getSetlists(): Promise<Setlist[]> {
-  try {
-    const { blobs } = await list({
-      prefix: 'setlists/',
-      token
-    })
-    
-    const setlists: Setlist[] = []
-    
-    for (const blob of blobs) {
-      if (blob.pathname.endsWith('.json')) {
-        try {
-          const response = await fetch(blob.url)
-          const setlist = await response.json()
-          setlists.push(setlist)
-        } catch (error) {
-          console.error(`Error fetching setlist metadata from ${blob.url}:`, error)
-        }
-      }
-    }
-    
-    return setlists.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  } catch (error) {
-    console.error("Error listing setlists:", error)
-    return []
-  }
-}
-
-async function getSheets(): Promise<Sheet[]> {
-  try {
-    const { blobs } = await list({
-      prefix: 'sheets/',
-      token
-    })
-    
-    const sheets: Sheet[] = []
-    
-    for (const blob of blobs) {
-      if (blob.pathname.endsWith('.json')) {
-        try {
-          const response = await fetch(blob.url)
-          const sheet = await response.json()
-          sheets.push(sheet)
-        } catch (error) {
-          console.error(`Error fetching sheet metadata from ${blob.url}:`, error)
-        }
-      }
-    }
-    
-    return sheets
-  } catch (error) {
-    console.error("Error listing sheets:", error)
-    return []
-  }
-}
-
 export async function GET() {
   try {
-    const [setlists, sheets] = await Promise.all([getSetlists(), getSheets()])
+    const db = getDb()
+    const setlists = db.prepare("SELECT id, name, createdAt FROM setlists ORDER BY createdAt DESC").all() as Setlist[]
     
-    // Add sheet count to each setlist
-    const setlistsWithCounts = setlists.map(setlist => ({
-      ...setlist,
-      sheetCount: setlist.sheets ? setlist.sheets.length : 0
-    }))
+    const setlistsWithSheets = setlists.map(setlist => {
+      const sheetsInSetlist = db.prepare("SELECT sheetId FROM setlist_sheets WHERE setlistId = ?").all(setlist.id) as { sheetId: string }[]
+      return {
+        ...setlist,
+        sheets: sheetsInSetlist.map(s => s.sheetId),
+        sheetCount: sheetsInSetlist.length
+      }
+    })
 
-    return NextResponse.json({ setlists: setlistsWithCounts })
+    return NextResponse.json({ setlists: setlistsWithSheets })
   } catch (error) {
     console.error("Error fetching setlists:", error)
       return NextResponse.json(
@@ -110,27 +53,17 @@ export async function POST(request: Request) {
       )
     }
 
+    const db = getDb()
     const id = uuidv4()
     const createdAt = new Date().toISOString()
 
-    const setlist: Setlist = {
+    db.prepare("INSERT INTO setlists (id, name, createdAt) VALUES (?, ?, ?)").run(id, name.trim(), createdAt)
+
+    return NextResponse.json({
       id,
       name: name.trim(),
       createdAt,
-      sheets: []
-    }
-
-    // Save setlist metadata to blob storage
-    await put(`setlists/${id}.json`, JSON.stringify(setlist), {
-      access: 'public',
-      contentType: 'application/json',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      token
-    })
-
-    return NextResponse.json({
-      ...setlist,
+      sheets: [],
       sheetCount: 0
     }, { status: 201 })
   } catch (error) {

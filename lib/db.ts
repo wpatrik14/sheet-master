@@ -26,7 +26,8 @@ export function getDb(): Database {
         filePath TEXT NOT NULL,
         fileSize INTEGER NOT NULL,
         uploadDate TEXT DEFAULT (datetime('now')),
-        updatedAt TEXT DEFAULT (datetime('now'))
+        updatedAt TEXT DEFAULT (datetime('now')),
+        fileType TEXT
       );
       
       CREATE TABLE IF NOT EXISTS setlists (

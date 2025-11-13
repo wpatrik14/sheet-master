@@ -9,22 +9,22 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias.canvas = false;
+    if (isServer) {
+      if (typeof config.externals === 'function') {
+        config.externals = config.externals({
+          context: undefined, // Replace with actual context if needed
+          request: 'better-sqlite3',
+        });
+      }
+      if (Array.isArray(config.externals)) {
+        config.externals.push('better-sqlite3');
+      } else {
+        config.externals = ['better-sqlite3'];
+      }
+    }
     return config;
-  },
-  async headers() {
-    return [
-      {
-        source: '/pdfs/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-        ],
-      },
-    ]
   },
 }
 

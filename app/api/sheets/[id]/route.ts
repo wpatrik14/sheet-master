@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
-import { del, list, put } from '@vercel/blob'
+import { getDb } from "@/lib/db"
+import path from "path"
+import fs from "fs/promises"
+import { existsSync } from "fs"
 
-const token = process.env.BLOB_READ_WRITE_TOKEN
-if (!token) {
-  throw new Error('BLOB_READ_WRITE_TOKEN is required')
+const UPLOAD_DIR = path.join(process.cwd(), "public", "sheets")
+
+// Ensure the upload directory exists
+if (!existsSync(UPLOAD_DIR)) {
+  fs.mkdir(UPLOAD_DIR, { recursive: true })
 }
 
 interface Sheet {
@@ -16,32 +21,14 @@ interface Sheet {
   fileType: string
 }
 
-async function getSheetById(id: string): Promise<Sheet | null> {
-  try {
-    const { blobs } = await list({
-      prefix: `sheets/${id}.json`,
-      token
-    })
-    
-    if (blobs.length === 0) {
-      return null
-    }
-    
-    const response = await fetch(blobs[0].url)
-    const sheet = await response.json()
-    return sheet
-  } catch (error) {
-    console.error(`Error fetching sheet ${id}:`, error)
-    return null
-  }
-}
-
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const sheet = await getSheetById(params.id)
+    const { params } = context
+    const db = getDb()
+    const sheet = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets WHERE id = ?").get(params.id) as Sheet | undefined
     
     if (!sheet) {
       return NextResponse.json(
@@ -65,10 +52,12 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const sheet = await getSheetById(params.id)
+    const { params } = context
+    const db = getDb()
+    const sheet = db.prepare("SELECT id, filePath FROM sheets WHERE id = ?").get(params.id) as Sheet | undefined
     
     if (!sheet) {
       return NextResponse.json(
@@ -77,72 +66,28 @@ export async function DELETE(
       )
     }
 
-    // Delete both the file and metadata
-    const deletePromises = []
-    
-    // Delete file (could be PDF or image)
-    // Check both pdfs/ and images/ folders
-    const { blobs: pdfBlobs } = await list({
-      prefix: `pdfs/${params.id}`,
-      token
-    })
-    
-    const { blobs: imageBlobs } = await list({
-      prefix: `images/${params.id}`,
-      token
-    })
-    
-    // Delete PDF files
-    for (const blob of pdfBlobs) {
-      deletePromises.push(del(blob.url, { token }))
+    // Delete the actual file from the file system
+    const absoluteFilePath = path.join(process.cwd(), "public", sheet.filePath)
+    if (existsSync(absoluteFilePath)) {
+      await fs.unlink(absoluteFilePath)
     }
-    
-    // Delete image files
-    for (const blob of imageBlobs) {
-      deletePromises.push(del(blob.url, { token }))
-    }
-    
-    // Delete metadata file
-    const { blobs: metadataBlobs } = await list({
-      prefix: `sheets/${params.id}.json`,
-      token
-    })
-    
-    for (const blob of metadataBlobs) {
-      deletePromises.push(del(blob.url, { token }))
-    }
-    
-    await Promise.all(deletePromises)
 
-    // Also need to remove this sheet from any setlists
-    const { blobs: setlistBlobs } = await list({
-      prefix: 'setlists/',
-      token
-    })
+    // Delete sheet metadata from the database
+    db.prepare("DELETE FROM sheets WHERE id = ?").run(params.id)
+
+    // Remove this sheet from any setlists
+    const setlistsContainingSheet = db.prepare("SELECT setlistId FROM setlist_sheets WHERE sheetId = ?").all(params.id) as { setlistId: string }[]
     
-    for (const blob of setlistBlobs) {
-      if (blob.pathname.endsWith('.json')) {
-        try {
-          const response = await fetch(blob.url)
-          const setlist = await response.json()
-          
-          if (setlist.sheets && setlist.sheets.includes(params.id)) {
-            // Remove sheet from setlist
-            setlist.sheets = setlist.sheets.filter((sheetId: string) => sheetId !== params.id)
-            
-            // Update setlist
-            await put(`setlists/${setlist.id}.json`, JSON.stringify(setlist), {
-              access: 'public',
-              contentType: 'application/json',
-              addRandomSuffix: false,
-              allowOverwrite: true,
-              token
-            })
-          }
-        } catch (error) {
-          console.error(`Error updating setlist ${blob.pathname}:`, error)
-        }
-      }
+    for (const { setlistId } of setlistsContainingSheet) {
+      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").run(setlistId, params.id)
+      // Reorder remaining sheets in the setlist
+      const remainingSheets = db.prepare("SELECT sheetId FROM setlist_sheets WHERE setlistId = ? ORDER BY position ASC").all(setlistId) as { sheetId: string }[]
+      const updatePositionStmt = db.prepare("UPDATE setlist_sheets SET position = ? WHERE setlistId = ? AND sheetId = ?")
+      db.transaction(() => {
+        remainingSheets.forEach((s, index) => {
+          updatePositionStmt.run(index, setlistId, s.sheetId)
+        })
+      })()
     }
 
     return NextResponse.json({ message: "Sheet deleted successfully" })

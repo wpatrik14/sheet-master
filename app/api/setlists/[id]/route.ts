@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server"
-import { put, list, del } from '@vercel/blob'
-
-const token = process.env.BLOB_READ_WRITE_TOKEN
-if (!token) {
-  throw new Error('BLOB_READ_WRITE_TOKEN is required')
-}
+import { getDb } from "@/lib/db"
 
 interface Setlist {
   id: string
@@ -23,63 +18,15 @@ interface Sheet {
   fileType: string
 }
 
-async function getSetlistById(id: string): Promise<Setlist | null> {
-  try {
-    const { blobs } = await list({
-      prefix: `setlists/${id}.json`,
-      token
-    })
-    
-    if (blobs.length === 0) {
-      return null
-    }
-    
-    const response = await fetch(blobs[0].url)
-    const setlist = await response.json()
-    return setlist
-  } catch (error) {
-    console.error(`Error fetching setlist ${id}:`, error)
-    return null
-  }
-}
-
-async function getSheetById(id: string): Promise<Sheet | null> {
-  try {
-    const { blobs } = await list({
-      prefix: `sheets/${id}.json`,
-      token
-    })
-    
-    if (blobs.length === 0) {
-      return null
-    }
-    
-    const response = await fetch(blobs[0].url)
-    const sheet = await response.json()
-    return sheet
-  } catch (error) {
-    console.error(`Error fetching sheet ${id}:`, error)
-    return null
-  }
-}
-
-async function updateSetlist(setlist: Setlist): Promise<void> {
-  await put(`setlists/${setlist.id}.json`, JSON.stringify(setlist), {
-    access: 'public',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    token
-  })
-}
-
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const setlist = await getSetlistById(params.id)
-    
+    const { params } = context
+    const db = getDb()
+    const setlist = db.prepare("SELECT id, name, createdAt FROM setlists WHERE id = ?").get(params.id) as Setlist | undefined
+
     if (!setlist) {
       return NextResponse.json(
         { error: "Dal-lista nem található" },
@@ -87,17 +34,18 @@ export async function GET(
       )
     }
 
-    // Get sheet details for each sheet in the setlist
+    const sheetsInSetlist = db.prepare("SELECT sheetId, position FROM setlist_sheets WHERE setlistId = ? ORDER BY position ASC").all(params.id) as { sheetId: string, position: number }[]
+    
     const sheetDetails = []
-    for (const sheetId of setlist.sheets) {
-      const sheet = await getSheetById(sheetId)
+    for (const s of sheetsInSetlist) {
+      const sheet = db.prepare("SELECT id, title, filePath, fileType FROM sheets WHERE id = ?").get(s.sheetId) as Sheet | undefined
       if (sheet) {
         sheetDetails.push({
           id: sheet.id,
           title: sheet.title,
           filePath: sheet.filePath,
           fileType: sheet.fileType,
-          position: setlist.sheets.indexOf(sheetId)
+          position: s.position
         })
       }
     }
@@ -117,11 +65,13 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const setlist = await getSetlistById(params.id)
-    
+    const { params } = context
+    const db = getDb()
+    const setlist = db.prepare("SELECT id, name, createdAt FROM setlists WHERE id = ?").get(params.id) as Setlist | undefined
+
     if (!setlist) {
       return NextResponse.json(
         { error: "Dal-lista nem található" },
@@ -138,6 +88,7 @@ export async function PUT(
           { status: 400 }
         )
       }
+      db.prepare("UPDATE setlists SET name = ? WHERE id = ?").run(name.trim(), params.id)
       setlist.name = name.trim()
     }
 
@@ -148,10 +99,19 @@ export async function PUT(
           { status: 400 }
         )
       }
-      setlist.sheets = sheets
-    }
+      
+      // Clear existing sheets for this setlist
+      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ?").run(params.id)
 
-    await updateSetlist(setlist)
+      // Insert new sheets
+      const insertSheetStmt = db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)")
+      const insertTransaction = db.transaction((sheetIds: string[]) => {
+        sheetIds.forEach((sheetId, index) => {
+          insertSheetStmt.run(params.id, sheetId, index)
+        })
+      })
+      insertTransaction(sheets)
+    }
 
     return NextResponse.json(setlist)
   } catch (error) {
@@ -165,10 +125,12 @@ export async function PUT(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const setlist = await getSetlistById(params.id)
+    const { params } = context
+    const db = getDb()
+    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(params.id) as { id: string } | undefined
     
     if (!setlist) {
       return NextResponse.json(
@@ -187,7 +149,7 @@ export async function POST(
     }
 
     // Check if sheet exists
-    const sheet = await getSheetById(sheetId)
+    const sheet = db.prepare("SELECT id FROM sheets WHERE id = ?").get(sheetId) as { id: string } | undefined
     if (!sheet) {
       return NextResponse.json(
         { error: "Kotta nem található" },
@@ -196,7 +158,8 @@ export async function POST(
     }
 
     // Check if sheet is already in setlist
-    if (setlist.sheets.includes(sheetId)) {
+    const existingEntry = db.prepare("SELECT 1 FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").get(params.id, sheetId)
+    if (existingEntry) {
       return NextResponse.json(
         { error: "A kotta már benne van a dal-listában" },
         { status: 400 }
@@ -204,8 +167,9 @@ export async function POST(
     }
 
     // Add sheet to setlist
-    setlist.sheets.push(sheetId)
-    await updateSetlist(setlist)
+    const currentMaxPosition = db.prepare("SELECT MAX(position) as maxPosition FROM setlist_sheets WHERE setlistId = ?").get(params.id) as { maxPosition: number | null }
+    const newPosition = (currentMaxPosition.maxPosition ?? -1) + 1
+    db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)").run(params.id, sheetId, newPosition)
 
     return NextResponse.json({ message: "Kotta sikeresen hozzáadva a dal-listához" })
   } catch (error) {
@@ -219,10 +183,12 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const setlist = await getSetlistById(params.id)
+    const { params } = context
+    const db = getDb()
+    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(params.id) as { id: string } | undefined
     
     if (!setlist) {
       return NextResponse.json(
@@ -231,15 +197,9 @@ export async function DELETE(
       )
     }
 
-    // Delete setlist metadata file
-    const { blobs } = await list({
-      prefix: `setlists/${params.id}.json`,
-      token
-    })
-    
-    for (const blob of blobs) {
-      await del(blob.url, { token })
-    }
+    // Delete setlist and its associated sheets
+    db.prepare("DELETE FROM setlists WHERE id = ?").run(params.id)
+    // setlist_sheets will be deleted by ON DELETE CASCADE
 
     return NextResponse.json({ message: "Dal-lista sikeresen törölve" })
   } catch (error) {
