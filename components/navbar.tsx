@@ -31,19 +31,19 @@ export default function Navbar() {
           <Link href="/sheets">
             <Button variant={pathname === "/sheets" ? "default" : "ghost"} size="sm">
               <FileMusic className="h-4 w-4 mr-2" />
-              Sheets
+              Kották
             </Button>
           </Link>
           <Link href="/setlists">
             <Button variant={pathname === "/setlists" ? "default" : "ghost"} size="sm">
               <ListMusic className="h-4 w-4 mr-2" />
-              Setlists
+              Dal-listák
             </Button>
           </Link>
           <Link href="/upload">
             <Button variant={pathname === "/upload" ? "default" : "ghost"} size="sm">
               <Upload className="h-4 w-4 mr-2" />
-              Upload
+              Feltöltés
             </Button>
           </Link>
         </div>
