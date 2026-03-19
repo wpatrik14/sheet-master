@@ -23,12 +23,12 @@ interface Sheet {
 
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await context.params
     const db = getDb()
-    const sheet = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets WHERE id = ?").get(params.id) as Sheet | undefined
+    const sheet = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets WHERE id = ?").get(id) as Sheet | undefined
     
     if (!sheet) {
       return NextResponse.json(
@@ -52,12 +52,12 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await context.params
     const db = getDb()
-    const sheet = db.prepare("SELECT id, filePath FROM sheets WHERE id = ?").get(params.id) as Sheet | undefined
+    const sheet = db.prepare("SELECT id, filePath FROM sheets WHERE id = ?").get(id) as Sheet | undefined
     
     if (!sheet) {
       return NextResponse.json(
@@ -73,13 +73,13 @@ export async function DELETE(
     }
 
     // Delete sheet metadata from the database
-    db.prepare("DELETE FROM sheets WHERE id = ?").run(params.id)
+    db.prepare("DELETE FROM sheets WHERE id = ?").run(id)
 
     // Remove this sheet from any setlists
-    const setlistsContainingSheet = db.prepare("SELECT setlistId FROM setlist_sheets WHERE sheetId = ?").all(params.id) as { setlistId: string }[]
+    const setlistsContainingSheet = db.prepare("SELECT setlistId FROM setlist_sheets WHERE sheetId = ?").all(id) as { setlistId: string }[]
     
     for (const { setlistId } of setlistsContainingSheet) {
-      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").run(setlistId, params.id)
+      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").run(setlistId, id)
       // Reorder remaining sheets in the setlist
       const remainingSheets = db.prepare("SELECT sheetId FROM setlist_sheets WHERE setlistId = ? ORDER BY position ASC").all(setlistId) as { sheetId: string }[]
       const updatePositionStmt = db.prepare("UPDATE setlist_sheets SET position = ? WHERE setlistId = ? AND sheetId = ?")

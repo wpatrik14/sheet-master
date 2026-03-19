@@ -61,6 +61,14 @@ export default function SheetsPage() {
   }, [])
 
   useEffect(() => {
+    const successMessage = sessionStorage.getItem("sheetUploadSuccessMessage")
+    if (successMessage) {
+      toast({
+        description: successMessage,
+      })
+      sessionStorage.removeItem("sheetUploadSuccessMessage")
+    }
+
     fetchSheets()
   }, [])
 

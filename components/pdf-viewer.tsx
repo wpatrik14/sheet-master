@@ -1,23 +1,16 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { Document, Page } from "react-pdf"
-import { Button } from "@/components/ui/button"
+import { useEffect, useMemo, useState } from "react"
+import { Document, Page, pdfjs } from "react-pdf"
 import { ZoomIn, ZoomOut, RotateCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import * as pdfjs from 'pdfjs-dist'
 
 interface PDFViewerProps {
   file: string
 }
 
-// Set up the worker source
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.js',
-    import.meta.url,
-  ).toString()
-}
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`
 
 export function PDFViewer({ file }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
@@ -52,7 +45,7 @@ export function PDFViewer({ file }: PDFViewerProps) {
         setPageNumber(pageNumber + 1)
       }
     } catch (error) {
-      console.error('Navigation error:', error)
+      console.error("Navigation error:", error)
     } finally {
       setIsLoading(false)
     }
@@ -65,22 +58,23 @@ export function PDFViewer({ file }: PDFViewerProps) {
         setPageNumber(pageNumber - 1)
       }
     } catch (error) {
-      console.error('Navigation error:', error)
+      console.error("Navigation error:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Reset page number when file changes
   useEffect(() => {
     setPageNumber(1)
     setNumPages(null)
     setIsLoading(true)
   }, [file])
 
+  const pdfFile = useMemo(() => (file.startsWith("http") ? { url: file } : file), [file])
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-2 border-b">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b p-2">
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm" onClick={zoomOut}>
             <ZoomOut className="h-4 w-4" />
@@ -93,11 +87,7 @@ export function PDFViewer({ file }: PDFViewerProps) {
           </Button>
         </div>
 
-        {numPages && (
-          <div className="text-sm">
-            Page {pageNumber} of {numPages}
-          </div>
-        )}
+        {numPages && <div className="text-sm">Page {pageNumber} of {numPages}</div>}
 
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm" onClick={goToPrevPage} disabled={pageNumber <= 1}>
@@ -112,13 +102,13 @@ export function PDFViewer({ file }: PDFViewerProps) {
       <div className="flex-1 overflow-auto flex items-center justify-center bg-muted/30">
         {isLoading && (
           <div className="flex flex-col items-center justify-center p-8">
-            <Skeleton className="h-[400px] w-[300px] mb-4" />
+            <Skeleton className="mb-4 h-[400px] w-[300px]" />
             <Skeleton className="h-4 w-[250px]" />
           </div>
         )}
 
         <Document
-          file={useMemo(() => file.startsWith('http') ? { url: file } : file, [file])}
+          file={pdfFile}
           onLoadSuccess={onDocumentLoadSuccess}
           loading={null}
           className="max-h-full"
@@ -126,7 +116,7 @@ export function PDFViewer({ file }: PDFViewerProps) {
             console.error("PDF Loading Error:", {
               error: error.toString(),
               fileUrl: file,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             })
             setIsLoading(false)
           }}
@@ -139,7 +129,7 @@ export function PDFViewer({ file }: PDFViewerProps) {
             renderTextLayer={false}
             renderAnnotationLayer={false}
             className="shadow-lg"
-          width={Math.min(window.innerWidth - 40, window.innerWidth > 768 ? 800 : window.innerWidth - 20)}
+            width={Math.min(window.innerWidth - 40, window.innerWidth > 768 ? 800 : window.innerWidth - 20)}
           />
         </Document>
       </div>

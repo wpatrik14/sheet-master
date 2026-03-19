@@ -1,19 +1,16 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { AlertCircle, FileUp, Upload } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Upload, FileUp, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function UploadPage() {
-  const [title, setTitle] = useState("")
-  const [file, setFile] = useState<File | null>(null)
-  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -22,88 +19,76 @@ export default function UploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null)
 
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0]
+    const selectedFiles = Array.from(e.target.files ?? [])
 
-      // Check if file is a PDF or image
-      const allowedTypes = [
-        "application/pdf",
-        "image/png", 
-        "image/jpeg",
-        "image/jpg"
-      ]
-      
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setError("Csak PDF, PNG és JPG fájlok támogatottak")
-        return
-      }
+    if (selectedFiles.length === 0) {
+      return
+    }
 
-      // Check file size (limit to 10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setError("A fájl mérete meghaladja a 10MB limitet")
-        return
-      }
+    const invalidFile = selectedFiles.find((selectedFile) => selectedFile.type !== "application/pdf")
+    if (invalidFile) {
+      setError("Csak PDF fájlok támogatottak")
+      e.target.value = ""
+      return
+    }
 
-      setFile(selectedFile)
+    const oversizedFile = selectedFiles.find((selectedFile) => selectedFile.size > 10 * 1024 * 1024)
+    if (oversizedFile) {
+      setError("A fájl mérete meghaladja a 10MB limitet")
+      e.target.value = ""
+      return
+    }
 
-      // Create a preview URL
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setFilePreview(event.target?.result as string)
-      }
-      reader.readAsDataURL(selectedFile)
+    setFiles(selectedFiles)
+  }
 
-      // Auto-fill title from filename if empty
-      if (!title) {
-        const fileName = selectedFile.name.replace(/\.[^/.]+$/, "") // Remove extension
-        setTitle(fileName)
-      }
+  const clearFiles = () => {
+    setFiles([])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
   }
 
   const handleUpload = async () => {
-    if (!file) {
-      setError("Kérlek válassz egy fájlt a feltöltéshez")
-      return
-    }
-
-    if (!title.trim()) {
-      setError("Kérlek add meg a kotta címét")
+    if (files.length === 0) {
+      setError("Kérlek válassz legalább egy PDF fájlt a feltöltéshez")
       return
     }
 
     setIsUploading(true)
 
     try {
-      // Create FormData and append fields
       const formData = new FormData()
-      formData.append('title', title.trim())
-      formData.append('file', file)
+      files.forEach((file) => {
+        formData.append("files", file)
+      })
 
-      // Send to API
       const response = await fetch("/api/sheets", {
         method: "POST",
-        body: formData
+        body: formData,
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || errorData.details || "Failed to upload sheet")
+        throw new Error(errorData.message || errorData.details || "Failed to upload sheets")
       }
 
-      // Navigate to sheets page
-      router.push("/sheets")
+      sessionStorage.setItem(
+        "sheetUploadSuccessMessage",
+        `Sikeres feltöltés: ${files.length} PDF fájl${files.length === 1 ? "" : "ok"} feltöltve.`
+      )
+      window.location.href = "/sheets"
       router.refresh()
     } catch (err: any) {
-      console.error("Error uploading file:", err)
-      setError(err.message || "Nem sikerült feltölteni a fájlt. Kérlek próbáld újra.")
+      console.error("Error uploading files:", err)
+      setError(err.message || "Nem sikerült feltölteni a fájlokat. Kérlek próbáld újra.")
       setIsUploading(false)
     }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-6">Kotta feltöltése</h1>
+    <div className="container mx-auto max-w-2xl px-4 py-8">
+      <h1 className="mb-6 text-3xl font-bold">Kották feltöltése</h1>
 
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -116,66 +101,59 @@ export default function UploadPage() {
         <CardContent className="pt-6">
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="title">Cím</Label>
-              <Input
-                id="title"
-                placeholder="Add meg a kotta címét"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="file">Kotta fájl</Label>
+              <Label htmlFor="files">Kotta fájlok</Label>
               <div
-                className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                className="cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors hover:bg-muted/50"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <input
                   ref={fileInputRef}
                   type="file"
-                  id="file"
-                  accept="application/pdf,image/png,image/jpeg,image/jpg"
+                  id="files"
+                  accept="application/pdf"
+                  multiple
                   className="hidden"
                   onChange={handleFileChange}
                 />
 
-                {filePreview ? (
-                  <div>
-                    <FileUp className="h-10 w-10 mx-auto mb-4 text-primary" />
-                    <p className="font-medium">{file?.name}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {(file?.size && (file.size / 1024 / 1024).toFixed(2)) || 0} MB
-                    </p>
+                {files.length > 0 ? (
+                  <div className="space-y-4">
+                    <FileUp className="mx-auto mb-4 h-10 w-10 text-primary" />
+                    <div className="space-y-2 text-left">
+                      {files.map((file) => (
+                        <div key={`${file.name}-${file.lastModified}`} className="rounded-md border bg-background px-3 py-2">
+                          <p className="font-medium">{file.name.replace(/\.[^/.]+$/, "")}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="mt-2"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setFile(null)
-                        setFilePreview(null)
-                        if (fileInputRef.current) {
-                          fileInputRef.current.value = ""
-                        }
+                        clearFiles()
                       }}
                     >
-                      Fájl cseréje
+                      Fájlok cseréje
                     </Button>
                   </div>
                 ) : (
                   <div>
-                    <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-                    <p className="font-medium">Húzd ide a kottádat</p>
-                    <p className="text-sm text-muted-foreground mt-1">Vagy kattints a fájlok böngészéséhez</p>
-                    <p className="text-xs text-muted-foreground mt-4">PDF, PNG és JPG fájlok támogatottak, max 10MB</p>
+                    <Upload className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+                    <p className="font-medium">Húzd ide a kottáidat</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Vagy kattints a fájlok böngészéséhez</p>
+                    <p className="mt-4 text-xs text-muted-foreground">PDF fájlok támogatottak, max 10MB / fájl</p>
                   </div>
                 )}
               </div>
             </div>
 
-            <Button className="w-full" onClick={handleUpload} disabled={isUploading || !file}>
-              {isUploading ? "Feltöltés..." : "Kotta feltöltése"}
+            <Button className="w-full" onClick={handleUpload} disabled={isUploading || files.length === 0}>
+              {isUploading ? "Feltöltés..." : "Kották feltöltése"}
             </Button>
           </div>
         </CardContent>
