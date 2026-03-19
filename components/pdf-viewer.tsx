@@ -10,7 +10,7 @@ interface PDFViewerProps {
   file: string
 }
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`
+pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.js", import.meta.url).toString()
 
 export function PDFViewer({ file }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
