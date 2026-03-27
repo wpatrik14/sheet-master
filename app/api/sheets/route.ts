@@ -34,7 +34,7 @@ interface Setlist {
 export async function GET() {
   try {
     const db = getDb()
-    const sheets = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets ORDER BY uploadDate DESC").all() as Sheet[]
+    const sheets = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets ORDER BY title ASC COLLATE NOCASE").all() as Sheet[]
     const setlists = db.prepare("SELECT id, name, createdAt FROM setlists").all() as Setlist[]
     
     // Add setlist information to each sheet
