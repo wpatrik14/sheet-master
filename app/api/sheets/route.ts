@@ -20,36 +20,61 @@ interface Sheet {
   uploadDate: string
   updatedAt: string
   fileType: string
+  source: string | null
+  musicalKey: string | null
   setlistCount?: number
   currentSetlists?: string[]
-}
-
-interface Setlist {
-  id: string
-  name: string
-  createdAt: string
-  sheets: string[]
+  lastSungDate?: string | null
+  timesSungTotal?: number
+  timesSungRecent?: number
 }
 
 export async function GET() {
   try {
     const db = getDb()
-    const sheets = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets ORDER BY title COLLATE NOCASE ASC").all() as Sheet[]
-    const setlists = db.prepare("SELECT id, name, createdAt FROM setlists").all() as Setlist[]
-    
+    const sheets = db
+      .prepare(
+        "SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType, source, musicalKey FROM sheets ORDER BY title COLLATE NOCASE ASC"
+      )
+      .all() as Sheet[]
+    const setlistMemberships = db
+      .prepare("SELECT sheetId, setlistId FROM setlist_sheets")
+      .all() as { sheetId: string; setlistId: string }[]
+    const setlistIdsBySheetId = new Map<string, string[]>()
+    for (const { sheetId, setlistId } of setlistMemberships) {
+      const existing = setlistIdsBySheetId.get(sheetId)
+      if (existing) {
+        existing.push(setlistId)
+      } else {
+        setlistIdsBySheetId.set(sheetId, [setlistId])
+      }
+    }
+
+    const performanceStats = db
+      .prepare(
+        `SELECT
+           sheetId,
+           MAX(performedDate) as lastSungDate,
+           COUNT(*) as timesSungTotal,
+           SUM(CASE WHEN performedDate >= date('now', 'localtime', '-90 days') THEN 1 ELSE 0 END) as timesSungRecent
+         FROM sheet_performances
+         GROUP BY sheetId`
+      )
+      .all() as { sheetId: string; lastSungDate: string; timesSungTotal: number; timesSungRecent: number }[]
+    const statsBySheetId = new Map(performanceStats.map((s) => [s.sheetId, s]))
+
     // Add setlist information to each sheet
     const sheetsWithSetlists = sheets.map(sheet => {
-      const currentSetlists = setlists
-        .filter(setlist => {
-          const sheetsInSetlist = db.prepare("SELECT sheetId FROM setlist_sheets WHERE setlistId = ?").all(setlist.id) as { sheetId: string }[]
-          return sheetsInSetlist.some(s => s.sheetId === sheet.id)
-        })
-        .map(setlist => setlist.id)
-      
+      const currentSetlists = setlistIdsBySheetId.get(sheet.id) ?? []
+      const stats = statsBySheetId.get(sheet.id)
+
       return {
         ...sheet,
         setlistCount: currentSetlists.length,
-        currentSetlists
+        currentSetlists,
+        lastSungDate: stats?.lastSungDate ?? null,
+        timesSungTotal: stats?.timesSungTotal ?? 0,
+        timesSungRecent: stats?.timesSungRecent ?? 0,
       }
     })
 

@@ -184,20 +184,18 @@ export default function SetlistsPage() {
                   Létrehozva: {new Date(setlist.createdAt).toLocaleDateString()}
                 </p>
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <div className="flex space-x-2">
-                  <Link href={`/setlists/${setlist.id}`}>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Szerkesztés
-                    </Button>
-                  </Link>
-                  <Button variant="destructive" size="sm" onClick={() => deleteSetlist(setlist.id)}>
-                    <Trash className="h-4 w-4 mr-2" />
-                    Törlés
+              <CardFooter className="flex flex-wrap gap-2">
+                <Link href={`/setlists/${setlist.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Szerkesztés
                   </Button>
-                </div>
-                <Link href={`/perform/${setlist.id}`}>
+                </Link>
+                <Button variant="destructive" size="sm" onClick={() => deleteSetlist(setlist.id)}>
+                  <Trash className="h-4 w-4 mr-2" />
+                  Törlés
+                </Button>
+                <Link href={`/perform/${setlist.id}`} className="ml-auto">
                   <Button size="sm" disabled={setlist.sheetCount === 0}>
                     <Play className="h-4 w-4 mr-2" />
                     Előadás

@@ -29,13 +29,13 @@ export function getDb(): Database {
         updatedAt TEXT DEFAULT (datetime('now')),
         fileType TEXT
       );
-      
+
       CREATE TABLE IF NOT EXISTS setlists (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         createdAt TEXT NOT NULL
       );
-      
+
       CREATE TABLE IF NOT EXISTS setlist_sheets (
         setlistId TEXT NOT NULL,
         sheetId TEXT NOT NULL,
@@ -44,7 +44,31 @@ export function getDb(): Database {
         FOREIGN KEY (setlistId) REFERENCES setlists(id) ON DELETE CASCADE,
         FOREIGN KEY (sheetId) REFERENCES sheets(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS sheet_performances (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sheetId TEXT NOT NULL,
+        performedDate TEXT NOT NULL,
+        setlistId TEXT,
+        UNIQUE(sheetId, performedDate),
+        FOREIGN KEY (sheetId) REFERENCES sheets(id) ON DELETE CASCADE,
+        FOREIGN KEY (setlistId) REFERENCES setlists(id) ON DELETE SET NULL
+      );
     `)
+
+    // Lightweight migration: add columns to `sheets` if this is an existing
+    // database created before source/musicalKey existed. SQLite has no
+    // "ADD COLUMN IF NOT EXISTS", so check first.
+    const existingColumns = new Set(
+      (db.prepare("PRAGMA table_info(sheets)").all() as { name: string }[]).map((c) => c.name)
+    )
+    if (!existingColumns.has("source")) {
+      db.exec("ALTER TABLE sheets ADD COLUMN source TEXT")
+    }
+    if (!existingColumns.has("musicalKey")) {
+      db.exec("ALTER TABLE sheets ADD COLUMN musicalKey TEXT")
+    }
+
     dbInstance = db
   }
 

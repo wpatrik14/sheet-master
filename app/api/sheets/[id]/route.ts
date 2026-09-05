@@ -19,6 +19,8 @@ interface Sheet {
   uploadDate: string
   updatedAt: string
   fileType: string
+  source: string | null
+  musicalKey: string | null
 }
 
 export async function GET(
@@ -28,7 +30,11 @@ export async function GET(
   try {
     const { id } = await context.params
     const db = getDb()
-    const sheet = db.prepare("SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType FROM sheets WHERE id = ?").get(id) as Sheet | undefined
+    const sheet = db
+      .prepare(
+        "SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType, source, musicalKey FROM sheets WHERE id = ?"
+      )
+      .get(id) as Sheet | undefined
     
     if (!sheet) {
       return NextResponse.json(
@@ -45,6 +51,77 @@ export async function GET(
     console.error("Error fetching sheet:", error)
     return NextResponse.json(
       { error: "Failed to fetch sheet" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params
+    const db = getDb()
+    const sheet = db.prepare("SELECT id FROM sheets WHERE id = ?").get(id) as { id: string } | undefined
+
+    if (!sheet) {
+      return NextResponse.json(
+        { error: "Sheet not found" },
+        { status: 404 }
+      )
+    }
+
+    const { title, source, musicalKey } = await request.json()
+
+    const updates: string[] = []
+    const values: (string | null)[] = []
+
+    if (title !== undefined) {
+      if (typeof title !== "string" || title.trim().length === 0) {
+        return NextResponse.json(
+          { error: "Title must be a non-empty string" },
+          { status: 400 }
+        )
+      }
+      updates.push("title = ?")
+      values.push(title.trim())
+    }
+
+    if (source !== undefined) {
+      updates.push("source = ?")
+      values.push(typeof source === "string" && source.trim().length > 0 ? source.trim() : null)
+    }
+
+    if (musicalKey !== undefined) {
+      updates.push("musicalKey = ?")
+      values.push(typeof musicalKey === "string" && musicalKey.trim().length > 0 ? musicalKey.trim() : null)
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json(
+        { error: "No fields to update" },
+        { status: 400 }
+      )
+    }
+
+    updates.push("updatedAt = ?")
+    values.push(new Date().toISOString())
+    values.push(id)
+
+    db.prepare(`UPDATE sheets SET ${updates.join(", ")} WHERE id = ?`).run(...values)
+
+    const updatedSheet = db
+      .prepare(
+        "SELECT id, title, filePath, fileSize, uploadDate, updatedAt, fileType, source, musicalKey FROM sheets WHERE id = ?"
+      )
+      .get(id) as Sheet
+
+    return NextResponse.json(updatedSheet)
+  } catch (error) {
+    console.error("Error updating sheet:", error)
+    return NextResponse.json(
+      { error: "Failed to update sheet" },
       { status: 500 }
     )
   }

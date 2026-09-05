@@ -331,19 +331,19 @@ export default function EditSetlistPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center mb-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center mb-6">
         <Link href="/setlists">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Vissza a dal-listákhoz
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold ml-4">Dal-lista szerkesztése</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold sm:ml-4">Dal-lista szerkesztése</h1>
       </div>
 
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <div className="flex items-end gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="flex-1">
               <Label htmlFor="setlist-name">Dal-lista neve</Label>
               <Input
@@ -353,7 +353,7 @@ export default function EditSetlistPage() {
                 className="mt-2"
               />
             </div>
-            <Button onClick={saveSetlist} disabled={!setlistName.trim()}>
+            <Button onClick={saveSetlist} disabled={!setlistName.trim()} className="w-full sm:w-auto">
               <Save className="h-4 w-4 mr-2" />
               Változások mentése
             </Button>
@@ -361,7 +361,7 @@ export default function EditSetlistPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Kották ebben a dal-listában</h2>
         <Dialog>
           <DialogTrigger asChild>
@@ -442,13 +442,13 @@ export default function EditSetlistPage() {
           {sheets.map((sheet, index) => (
             <div key={sheet.id}>
               {index > 0 && <Separator />}
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center">
-                  <div className="font-medium mr-2 w-8 text-center text-muted-foreground">{index + 1}</div>
-                  <FileMusic className="h-5 w-5 mr-3 text-muted-foreground" />
-                  <span>{sheet.title}</span>
+              <div className="flex items-center justify-between gap-2 p-4">
+                <div className="flex items-center min-w-0">
+                  <div className="font-medium mr-2 w-8 shrink-0 text-center text-muted-foreground">{index + 1}</div>
+                  <FileMusic className="h-5 w-5 mr-3 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{sheet.title}</span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 shrink-0">
                   <Button variant="ghost" size="icon" disabled={index === 0} onClick={() => moveSheetUp(index)}>
                     <MoveUp className="h-4 w-4" />
                   </Button>

@@ -60,6 +60,12 @@ export default function PerformPage() {
       setSetlist(data)
       setSheets(data.sheets || [])
 
+      // Fire-and-forget: mark every sheet in this setlist as "sung today".
+      // Never blocks or interrupts the performance view on failure.
+      fetch(`/api/setlists/${setlistId}/log-performance`, { method: "POST" }).catch((err) => {
+        console.error("Error logging setlist performance:", err)
+      })
+
       if (data.sheets?.length > 0) {
         fetchSheetFile(data.sheets[0].id)
       } else {
