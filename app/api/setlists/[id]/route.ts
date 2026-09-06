@@ -20,12 +20,12 @@ interface Sheet {
 
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await context.params
     const db = getDb()
-    const setlist = db.prepare("SELECT id, name, createdAt FROM setlists WHERE id = ?").get(params.id) as Setlist | undefined
+    const setlist = db.prepare("SELECT id, name, createdAt FROM setlists WHERE id = ?").get(id) as Setlist | undefined
 
     if (!setlist) {
       return NextResponse.json(
@@ -34,8 +34,8 @@ export async function GET(
       )
     }
 
-    const sheetsInSetlist = db.prepare("SELECT sheetId, position FROM setlist_sheets WHERE setlistId = ? ORDER BY position ASC").all(params.id) as { sheetId: string, position: number }[]
-    
+    const sheetsInSetlist = db.prepare("SELECT sheetId, position FROM setlist_sheets WHERE setlistId = ? ORDER BY position ASC").all(id) as { sheetId: string, position: number }[]
+
     const sheetDetails = []
     for (const s of sheetsInSetlist) {
       const sheet = db.prepare("SELECT id, title, filePath, fileType FROM sheets WHERE id = ?").get(s.sheetId) as Sheet | undefined
@@ -65,12 +65,12 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await context.params
     const db = getDb()
-    const setlist = db.prepare("SELECT id, name, createdAt FROM setlists WHERE id = ?").get(params.id) as Setlist | undefined
+    const setlist = db.prepare("SELECT id, name, createdAt FROM setlists WHERE id = ?").get(id) as Setlist | undefined
 
     if (!setlist) {
       return NextResponse.json(
@@ -88,7 +88,7 @@ export async function PUT(
           { status: 400 }
         )
       }
-      db.prepare("UPDATE setlists SET name = ? WHERE id = ?").run(name.trim(), params.id)
+      db.prepare("UPDATE setlists SET name = ? WHERE id = ?").run(name.trim(), id)
       setlist.name = name.trim()
     }
 
@@ -99,15 +99,15 @@ export async function PUT(
           { status: 400 }
         )
       }
-      
+
       // Clear existing sheets for this setlist
-      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ?").run(params.id)
+      db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ?").run(id)
 
       // Insert new sheets
       const insertSheetStmt = db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)")
       const insertTransaction = db.transaction((sheetIds: string[]) => {
         sheetIds.forEach((sheetId, index) => {
-          insertSheetStmt.run(params.id, sheetId, index)
+          insertSheetStmt.run(id, sheetId, index)
         })
       })
       insertTransaction(sheets)
@@ -125,13 +125,13 @@ export async function PUT(
 
 export async function POST(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await context.params
     const db = getDb()
-    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(params.id) as { id: string } | undefined
-    
+    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(id) as { id: string } | undefined
+
     if (!setlist) {
       return NextResponse.json(
         { error: "Dal-lista nem található" },
@@ -158,7 +158,7 @@ export async function POST(
     }
 
     // Check if sheet is already in setlist
-    const existingEntry = db.prepare("SELECT 1 FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").get(params.id, sheetId)
+    const existingEntry = db.prepare("SELECT 1 FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").get(id, sheetId)
     if (existingEntry) {
       return NextResponse.json(
         { error: "A kotta már benne van a dal-listában" },
@@ -167,9 +167,9 @@ export async function POST(
     }
 
     // Add sheet to setlist
-    const currentMaxPosition = db.prepare("SELECT MAX(position) as maxPosition FROM setlist_sheets WHERE setlistId = ?").get(params.id) as { maxPosition: number | null }
+    const currentMaxPosition = db.prepare("SELECT MAX(position) as maxPosition FROM setlist_sheets WHERE setlistId = ?").get(id) as { maxPosition: number | null }
     const newPosition = (currentMaxPosition.maxPosition ?? -1) + 1
-    db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)").run(params.id, sheetId, newPosition)
+    db.prepare("INSERT INTO setlist_sheets (setlistId, sheetId, position) VALUES (?, ?, ?)").run(id, sheetId, newPosition)
 
     return NextResponse.json({ message: "Kotta sikeresen hozzáadva a dal-listához" })
   } catch (error) {
@@ -183,13 +183,13 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await context.params
     const db = getDb()
-    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(params.id) as { id: string } | undefined
-    
+    const setlist = db.prepare("SELECT id FROM setlists WHERE id = ?").get(id) as { id: string } | undefined
+
     if (!setlist) {
       return NextResponse.json(
         { error: "Dal-lista nem található" },
@@ -198,7 +198,7 @@ export async function DELETE(
     }
 
     // Delete setlist and its associated sheets
-    db.prepare("DELETE FROM setlists WHERE id = ?").run(params.id)
+    db.prepare("DELETE FROM setlists WHERE id = ?").run(id)
     // setlist_sheets will be deleted by ON DELETE CASCADE
 
     return NextResponse.json({ message: "Dal-lista sikeresen törölve" })
