@@ -188,6 +188,8 @@ export async function POST(request: Request) {
         uploadDate,
         updatedAt: uploadDate,
         fileType: file.type,
+        source: null,
+        musicalKey: null,
       }
 
       db.prepare(
