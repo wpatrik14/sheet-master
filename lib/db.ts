@@ -2,13 +2,17 @@ import type { Database } from "better-sqlite3"
 import path from "path"
 import fs from "fs"
 
-// Ensure the data directory exists
+// Tests run against a private in-memory database instead of the real
+// data file - vitest sets NODE_ENV=test automatically, same convention
+// Jest and most other JS test runners use.
+const isTest = process.env.NODE_ENV === "test"
+
 const dataDir = path.join(process.cwd(), "data")
-if (!fs.existsSync(dataDir)) {
+if (!isTest && !fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true })
 }
 
-const dbPath = path.join(dataDir, "sheetmusic.db")
+const dbPath = isTest ? ":memory:" : path.join(dataDir, "sheetmusic.db")
 
 let dbInstance: Database | null = null
 
