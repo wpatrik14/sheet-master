@@ -149,12 +149,16 @@ export async function DELETE(
       await fs.unlink(absoluteFilePath)
     }
 
+    // Look this up before deleting the sheet row below: setlist_sheets has
+    // ON DELETE CASCADE on sheetId, so once the sheet row is gone this
+    // query would already come back empty and the reorder loop below would
+    // silently never run, leaving gaps in the remaining sheets' positions.
+    const setlistsContainingSheet = db.prepare("SELECT setlistId FROM setlist_sheets WHERE sheetId = ?").all(id) as { setlistId: string }[]
+
     // Delete sheet metadata from the database
     db.prepare("DELETE FROM sheets WHERE id = ?").run(id)
 
     // Remove this sheet from any setlists
-    const setlistsContainingSheet = db.prepare("SELECT setlistId FROM setlist_sheets WHERE sheetId = ?").all(id) as { setlistId: string }[]
-    
     for (const { setlistId } of setlistsContainingSheet) {
       db.prepare("DELETE FROM setlist_sheets WHERE setlistId = ? AND sheetId = ?").run(setlistId, id)
       // Reorder remaining sheets in the setlist
