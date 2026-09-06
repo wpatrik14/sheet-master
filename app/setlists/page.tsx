@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -30,14 +29,9 @@ export default function SetlistsPage() {
   const [setlists, setSetlists] = useState<Setlist[]>([])
   const [newSetlistName, setNewSetlistName] = useState("")
   const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchSetlists()
-  }, [])
-
-  const fetchSetlists = async () => {
+  const fetchSetlists = useCallback(async () => {
     try {
       const response = await fetch("/api/setlists")
       if (!response.ok) {
@@ -56,7 +50,11 @@ export default function SetlistsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchSetlists()
+  }, [fetchSetlists])
 
   const createSetlist = async () => {
     if (!newSetlistName.trim()) return

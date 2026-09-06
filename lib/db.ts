@@ -14,7 +14,10 @@ let dbInstance: Database | null = null
 
 export function getDb(): Database {
   if (!dbInstance) {
-    // Dynamic import to avoid issues with Next.js SSR
+    // require() (not a static import) so webpack doesn't try to bundle this
+    // native addon at build/SSR time - getDb() is synchronous everywhere it's
+    // called, so a dynamic import() isn't a drop-in option here.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const BetterSqlite3 = require("better-sqlite3")
     const db = new BetterSqlite3(dbPath)
 

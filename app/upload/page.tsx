@@ -79,9 +79,9 @@ export default function UploadPage() {
       )
       window.location.href = "/sheets"
       router.refresh()
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error uploading files:", err)
-      setError(err.message || "Nem sikerült feltölteni a fájlokat. Kérlek próbáld újra.")
+      setError(err instanceof Error && err.message ? err.message : "Nem sikerült feltölteni a fájlokat. Kérlek próbáld újra.")
       setIsUploading(false)
     }
   }

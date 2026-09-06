@@ -9,15 +9,6 @@ interface Setlist {
   sheets: string[]
 }
 
-interface Sheet {
-  id: string
-  title: string
-  filePath: string
-  fileSize: number
-  uploadDate: string
-  updatedAt: string
-}
-
 export async function GET() {
   try {
     const db = getDb()

@@ -1,6 +1,6 @@
  "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Fuse from "fuse.js"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -95,19 +95,7 @@ export default function SheetsPage() {
     fetchSetlists()
   }, [])
 
-  useEffect(() => {
-    const successMessage = sessionStorage.getItem("sheetUploadSuccessMessage")
-    if (successMessage) {
-      toast({
-        description: successMessage,
-      })
-      sessionStorage.removeItem("sheetUploadSuccessMessage")
-    }
-
-    fetchSheets()
-  }, [])
-
-  const fetchSheets = async () => {
+  const fetchSheets = useCallback(async () => {
     try {
       const response = await fetch("/api/sheets")
       if (!response.ok) {
@@ -126,7 +114,19 @@ export default function SheetsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    const successMessage = sessionStorage.getItem("sheetUploadSuccessMessage")
+    if (successMessage) {
+      toast({
+        description: successMessage,
+      })
+      sessionStorage.removeItem("sheetUploadSuccessMessage")
+    }
+
+    fetchSheets()
+  }, [fetchSheets, toast])
 
   const fetchSheetFile = async (id: string) => {
     try {
@@ -395,7 +395,7 @@ export default function SheetsPage() {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
-                        <DialogTitle>Dal-listák amelyek tartalmazzák: "{sheet.title}"</DialogTitle>
+                        <DialogTitle>Dal-listák amelyek tartalmazzák: &quot;{sheet.title}&quot;</DialogTitle>
                       </DialogHeader>
                       <div className="grid gap-2 py-4">
                         {(Array.isArray(sheet.currentSetlists) ? sheet.currentSetlists : []).map(setlistId => {
@@ -521,7 +521,7 @@ export default function SheetsPage() {
                                 // Refresh the sheet data to update setlist counts
                                 fetchSheets()
                               }
-                            } catch (error) {
+                            } catch {
                               toast({
                                 title: "Error",
                                 description: "Failed to add sheet to setlist",
@@ -603,7 +603,7 @@ export default function SheetsPage() {
               <Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-source">Forrás (pl. "Dicsérem Neved 2")</Label>
+              <Label htmlFor="edit-source">Forrás (pl. &quot;Dicsérem Neved 2&quot;)</Label>
               <Input id="edit-source" value={editSource} onChange={(e) => setEditSource(e.target.value)} />
             </div>
             <div className="grid gap-2">

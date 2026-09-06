@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -50,11 +50,7 @@ export default function EditSetlistPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
 
-  useEffect(() => {
-    fetchSetlistData()
-  }, [setlistId])
-
-  const fetchSetlistData = async () => {
+  const fetchSetlistData = useCallback(async () => {
     try {
       // Fetch setlist details
       const setlistResponse = await fetch(`/api/setlists/${setlistId}`)
@@ -91,7 +87,11 @@ export default function EditSetlistPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [setlistId, toast, router])
+
+  useEffect(() => {
+    fetchSetlistData()
+  }, [fetchSetlistData])
 
   const saveSetlist = async () => {
     if (!setlist || !setlistName.trim()) return

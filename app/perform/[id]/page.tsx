@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PDFViewer } from "@/components/pdf-viewer"
@@ -38,13 +38,28 @@ export default function PerformPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [currentSheetFile, setCurrentSheetFile] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (setlistId) {
-      fetchSetlistData()
-    }
-  }, [setlistId])
+  const fetchSheetFile = useCallback(async (sheetId: string) => {
+    try {
+      const response = await fetch(`/api/sheets/${sheetId}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch sheet")
+      }
 
-  const fetchSetlistData = async () => {
+      const data = await response.json()
+      setCurrentSheetFile(data.file)
+      setIsLoading(false)
+    } catch (error) {
+      console.error("Error fetching sheet file:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load sheet file. Please try again.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+    }
+  }, [toast])
+
+  const fetchSetlistData = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/setlists/${setlistId}`)
@@ -80,28 +95,13 @@ export default function PerformPage() {
       })
       router.push("/setlists")
     }
-  }
+  }, [setlistId, toast, router, fetchSheetFile])
 
-  const fetchSheetFile = async (sheetId: string) => {
-    try {
-      const response = await fetch(`/api/sheets/${sheetId}`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch sheet")
-      }
-
-      const data = await response.json()
-      setCurrentSheetFile(data.file)
-      setIsLoading(false)
-    } catch (error) {
-      console.error("Error fetching sheet file:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load sheet file. Please try again.",
-        variant: "destructive",
-      })
-      setIsLoading(false)
+  useEffect(() => {
+    if (setlistId) {
+      fetchSetlistData()
     }
-  }
+  }, [setlistId, fetchSetlistData])
 
   const goToNextSheet = () => {
     const nextIndex = currentSheetIndex + 1
